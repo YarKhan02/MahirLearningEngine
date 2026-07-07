@@ -1,6 +1,8 @@
 package dto
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
 type ErrorResponse struct {
 	Error string `json:"error"`
@@ -27,4 +29,13 @@ type AuthUser struct {
 type LoginResponse struct {
 	AccessToken string 		`json:"token"`
 	User 		AuthUser 	`json:"user"`
+}
+
+type CourseResponse struct {
+	ID 			string		`json:"id"`
+	Title 		string		`json:"title"`
+	Level 		string		`json:"level"`
+	Duration 	int			`json:"duration"`
+	Description string		`json:"description"`
+	Status		string		`json:"status"`
 }

@@ -11,6 +11,7 @@ import (
 
 	apihttp "github.com/YarKhan02/MahirLearningEngine/internal/api/http"
 	"github.com/YarKhan02/MahirLearningEngine/internal/config"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/course"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/role"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
@@ -63,14 +64,16 @@ func main () {
 	}
 
 	userRepo	:= repository.NewUserRepository(db)
+	courseRepo 	:= repository.NewCourseRepository(db)
 	roleRepo 	:= repository.NewRoleRepository(db)
 	tokenRepo 	:= repository.NewTokenRepository(db)
 
 	userSvc 	:= user.NewService(userRepo, roleRepo)
+	courseSvc 	:= course.NewService(courseRepo)
 	roleSvc 	:= role.NewService(roleRepo)
 	tokenSvc 	:= token.NewService(key, tokenRepo, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 
-	srv := apihttp.NewServer(cfg, userSvc, roleSvc, tokenSvc)
+	srv := apihttp.NewServer(cfg, userSvc, roleSvc, courseSvc, tokenSvc)
 
 	log.Printf("listening on: %s", cfg.Addr)
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

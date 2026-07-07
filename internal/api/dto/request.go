@@ -55,3 +55,10 @@ func (r LoginRequest) Validate() error {
 	}
 	return nil
 }
+
+type InsertCourse struct {
+	Title 		string 		`json:"title"`
+	Level 		string 		`json:"level"`
+	Duration 	int 		`json:"duration"`
+	Description string 		`json:"description,omitempty"`
+}

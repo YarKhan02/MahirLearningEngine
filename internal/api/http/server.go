@@ -6,6 +6,7 @@ import (
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/handler"
 	"github.com/YarKhan02/MahirLearningEngine/internal/config"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/course"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/role"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
@@ -14,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, tokenSvc *token.Service) *http.Server {
+func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, tokenSvc *token.Service) *http.Server {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.AllowedOrigin},
@@ -24,11 +25,18 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	}))
 
 	userHandler := handler.NewAuthHandler(userSvc, tokenSvc)
+	courseHandler := handler.NewCourseHandler(courseSvc)
 
 	user := r.Group("/auth")
 	{
 		user.POST("/register", userHandler.RegisterAdmin)
 		user.POST("/login", userHandler.Login)
+	}
+
+	course := r.Group("course")
+	{
+		course.POST("admin", courseHandler.InsertCourse)
+		course.GET("admin", courseHandler.GetCourse)
 	}
 
 	return &http.Server{
