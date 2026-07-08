@@ -39,3 +39,12 @@ type CourseResponse struct {
 	Description string		`json:"description"`
 	Status		string		`json:"status"`
 }
+
+type LessonResponse struct {
+	ID			string		`json:"id"`
+	Title 		string		`json:"title"`
+	Description string		`json:"description"`
+	OrderNo		int			`json:"orderNo"`
+	YoutubeURL 	string		`json:"youtubeUrl"`
+	Content		string		`json:"content"`
+}

@@ -5,17 +5,19 @@ import (
 	"time"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/handler"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
 	"github.com/YarKhan02/MahirLearningEngine/internal/config"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/course"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/role"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
+	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, tokenSvc *token.Service) *http.Server {
+func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, tokenSvc *token.Service, redis *redis.RedisClient) *http.Server {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.AllowedOrigin},
@@ -33,10 +35,20 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 		user.POST("/login", userHandler.Login)
 	}
 
-	course := r.Group("course")
+	// /course/admin/
+	course := r.Group("/course", middleware.Auth(tokenSvc, redis))
+	admin := course.Group("/admin")
+	admin.Use(
+		middleware.Auth(tokenSvc, redis),
+		middleware.RequireRole("admin"),
+	)
 	{
-		course.POST("admin", courseHandler.InsertCourse)
-		course.GET("admin", courseHandler.GetCourse)
+		admin.POST("", courseHandler.InsertCourse)
+		admin.GET("", courseHandler.GetCourse)
+		admin.POST("/:courseId/lessons", courseHandler.InsertLesson)
+		admin.GET("/:courseId/lessons", courseHandler.GetLesson)
+		admin.PATCH("/:courseId/lessons/:lessonId", courseHandler.UpdateLesson)
+		admin.PATCH("/lessons/:lessonId/reorder", courseHandler.ReorderLesson)
 	}
 
 	return &http.Server{

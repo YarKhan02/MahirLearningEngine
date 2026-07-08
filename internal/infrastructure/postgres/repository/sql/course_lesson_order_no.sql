@@ -1,0 +1,1 @@
+SELECT course_id, order_no FROM lesson WHERE id = $1 FOR UPDATE

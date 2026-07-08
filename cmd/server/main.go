@@ -73,7 +73,7 @@ func main () {
 	roleSvc 	:= role.NewService(roleRepo)
 	tokenSvc 	:= token.NewService(key, tokenRepo, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 
-	srv := apihttp.NewServer(cfg, userSvc, roleSvc, courseSvc, tokenSvc)
+	srv := apihttp.NewServer(cfg, userSvc, roleSvc, courseSvc, tokenSvc, redis)
 
 	log.Printf("listening on: %s", cfg.Addr)
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
