@@ -1,0 +1,1 @@
+SELECT COUNT(*) FROM lesson WHERE course_id = $1

@@ -1,0 +1,5 @@
+SELECT EXISTS(
+    SELECT 1
+    FROM course
+    WHERE id = $1
+)

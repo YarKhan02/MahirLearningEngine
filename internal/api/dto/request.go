@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/mail"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -54,4 +56,34 @@ func (r LoginRequest) Validate() error {
 		return fmt.Errorf("email and password are required")
 	}
 	return nil
+}
+
+type InsertCourse struct {
+	Title 		string 		`json:"title"`
+	Level 		string 		`json:"level"`
+	Duration 	int 		`json:"duration"`
+	Description string 		`json:"description,omitempty"`
+}
+
+type InsertLesson struct {
+	ID			uuid.UUID	`json:"id"`
+	CourseID	uuid.UUID	`json:"courseId"`
+	Title 		string 		`json:"title"`
+	Description string 		`json:"description,omitempty"`
+	OrderNo		int			`json:"orderNo"`
+	YoutubeURL 	string		`json:"youtubeUrl,omitempty"`
+	Content		string		`json:"content,omitempty"`
+}
+
+type UpdateLesson struct {
+	ID			uuid.UUID	`json:"id"`
+	CourseID	uuid.UUID	`json:"courseId"`
+	Title 		*string 	`json:"title,omitempty"`
+	Description *string 	`json:"description,omitempty"`
+	YoutubeURL 	*string		`json:"youtubeUrl,omitempty"`
+	Content		*string		`json:"content,omitempty"`
+}
+
+type UpdateLessonOrderRequest struct {
+    OrderNo int `json:"orderNo" binding:"required"`
 }
