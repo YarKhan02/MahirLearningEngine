@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -25,72 +26,75 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
 )
 
-func main () {
+// main only reports the error — all setup lives in run so deferred
+// cleanups actually execute on failure (log.Fatalf skips defers).
+func main() {
+	if err := run(); err != nil {
+		log.Fatalf("%v", err)
+	}
+}
+
+func run() error {
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
 	db, err := sql.Open("pgx", cfg.DatabaseURL)
 	if err != nil {
-		cancel()
-		log.Fatalf("failed to connect to database: %v", err)
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer db.Close()
 
-	if err := db.PingContext(ctx); err != nil {
-		cancel()
-		log.Fatalf("database ping failed: %v", err)
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	err = db.PingContext(ctx)
 	cancel()
+	if err != nil {
+		return fmt.Errorf("database ping failed: %w", err)
+	}
 
 	if err := migrations.RunMigration(cfg.MigrationsPath, cfg.DatabaseURL); err != nil {
-		log.Fatalf("failed to migrate database: %v", err)
+		return fmt.Errorf("failed to migrate database: %w", err)
 	}
 
-	redis, err := redis.NewRedisClient(cfg.RedisURL)
+	redisClient, err := redis.NewRedisClient(cfg.RedisURL)
 	if err != nil {
-		log.Fatalf("failed to connect to redis: %v", err)
+		return fmt.Errorf("failed to connect to redis: %w", err)
 	}
-	defer redis.Close()
+	defer redisClient.Close()
 
 	var key *rsa.PrivateKey
-	var keyErr error
-	var keySource string
-
 	if cfg.RSAPrivateKeyPEM != "" {
-		keySource = "RSA_PRIVATE_KEY_PEM"
-		key, keyErr = crypto.LoadRSAPrivateKeyFromPEM(cfg.RSAPrivateKeyPEM)
+		key, err = crypto.LoadRSAPrivateKeyFromPEM(cfg.RSAPrivateKeyPEM)
+		if err != nil {
+			return fmt.Errorf("failed to load RSA key from RSA_PRIVATE_KEY_PEM: %w", err)
+		}
 	}
 
-	if keyErr != nil {
-		log.Fatalf("failed to load RSA key from %s: %v", keySource, keyErr)
-	}
-
-	userRepo	:= repository.NewUserRepository(db)
-	courseRepo 	:= repository.NewCourseRepository(db)
-	batchRepo 	:= repository.NewBatchRepository(db)
-	roleRepo 	:= repository.NewRoleRepository(db)
+	userRepo := repository.NewUserRepository(db)
+	courseRepo := repository.NewCourseRepository(db)
+	batchRepo := repository.NewBatchRepository(db)
+	roleRepo := repository.NewRoleRepository(db)
 	studentRepo := repository.NewStudentRepository(db)
 	assignmentRepo := repository.NewAssignmentRepository(db)
 	attendanceRepo := repository.NewAttendanceRepository(db)
-	tokenRepo 	:= repository.NewTokenRepository(db)
+	tokenRepo := repository.NewTokenRepository(db)
 
-	userSvc 	:= user.NewService(userRepo, roleRepo)
-	courseSvc 	:= course.NewService(courseRepo)
-	batchSvc 	:= batch.NewService(batchRepo)
-	roleSvc 	:= role.NewService(roleRepo)
-	studentSvc 	:= student.NewService(studentRepo)
+	userSvc := user.NewService(userRepo, roleRepo)
+	courseSvc := course.NewService(courseRepo)
+	batchSvc := batch.NewService(batchRepo)
+	roleSvc := role.NewService(roleRepo)
+	studentSvc := student.NewService(studentRepo)
 	assignmentSvc := assignment.NewService(assignmentRepo)
 	attendanceSvc := attendance.NewService(attendanceRepo)
-	tokenSvc 	:= token.NewService(key, tokenRepo, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
+	tokenSvc := token.NewService(key, tokenRepo, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 
-	srv := apihttp.NewServer(cfg, userSvc, roleSvc, courseSvc, batchSvc, studentSvc, assignmentSvc, attendanceSvc, tokenSvc, redis)
+	srv := apihttp.NewServer(cfg, userSvc, roleSvc, courseSvc, batchSvc, studentSvc, assignmentSvc, attendanceSvc, tokenSvc, redisClient)
 
 	log.Printf("listening on: %s", cfg.Addr)
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatalf("server error: %v", err)
+		return fmt.Errorf("server error: %w", err)
 	}
+
+	return nil
 }

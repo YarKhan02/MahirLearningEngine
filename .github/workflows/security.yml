@@ -33,6 +33,7 @@ jobs:
       # Dependency vulnerabilities (only flags code paths you actually call)
       - uses: golang/govulncheck-action@v1
         with:
+          go-version-input: ""
           go-version-file: go.mod
 
       # SBOM — inventory of everything in the build
