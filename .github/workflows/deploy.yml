@@ -26,30 +26,23 @@ jobs:
       name: production
 
     steps:
-      # No-op until hosting is wired up: add the RENDER_DEPLOY_HOOK secret
-      # (Render → service → Settings → Deploy Hook) and this deploys for real.
       - name: Trigger Render deploy
-        id: trigger
-        env:
-          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-        run: |
-          if [ -z "$HOOK" ]; then
-            echo "RENDER_DEPLOY_HOOK not configured — skipping deploy."
-            echo "deployed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          curl --fail -X POST "$HOOK"
-          echo "deployed=true" >> "$GITHUB_OUTPUT"
+        run: curl --fail -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
 
       # The hook only QUEUES a deploy — poll /health until the new
       # instance answers, or fail the deployment after ~5 minutes.
       - name: Wait for healthy deploy
-        if: steps.trigger.outputs.deployed == 'true' && vars.HEALTH_CHECK_URL != ''
+        env:
+          HEALTH_URL: ${{ secrets.HEALTH_CHECK_URL }}
         run: |
-          echo "Waiting for ${{ vars.HEALTH_CHECK_URL }} ..."
+          if [ -z "$HEALTH_URL" ]; then
+            echo "HEALTH_CHECK_URL not set — skipping health check."
+            exit 0
+          fi
+          echo "Waiting for the service to come up ..."
           sleep 30
           for i in $(seq 1 20); do
-            if curl --fail --silent --max-time 10 "${{ vars.HEALTH_CHECK_URL }}"; then
+            if curl --fail --silent --max-time 10 "$HEALTH_URL"; then
               echo "Healthy."
               exit 0
             fi
