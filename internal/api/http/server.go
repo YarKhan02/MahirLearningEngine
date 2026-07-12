@@ -33,7 +33,7 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	userHandler := handler.NewAuthHandler(userSvc, tokenSvc)
 	courseHandler := handler.NewCourseHandler(courseSvc)
 	batchHandler := handler.NewBatchHandler(batchSvc)
-	studentHandler := handler.NewStudentHandler(studentSvc, userSvc)
+	studentHandler := handler.NewStudentHandler(studentSvc, userSvc, cfg.TempPassword)
 	assignmentHandler := handler.NewAssignmentHandler(assignmentSvc)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceSvc)
 

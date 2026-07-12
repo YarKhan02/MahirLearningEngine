@@ -53,16 +53,14 @@ func VerifyPassword(password, encodedHash string) bool {
 	return subtle.ConstantTimeCompare(compHash, decodedHash) == 1
 }
 
-const tempPasswordAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
-
-func GenerateTempPassword(length int) (string, error) {
+func GenerateTempPassword(tempPassword string, length int) (string, error) {
 	out := make([]byte, length)
 	for i := range out {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(tempPasswordAlphabet))))
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(tempPassword))))
 		if err != nil {
 			return "", err
 		}
-		out[i] = tempPasswordAlphabet[n.Int64()]
+		out[i] = tempPassword[n.Int64()]
 	}
 	return string(out), nil
 }

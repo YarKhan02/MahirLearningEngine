@@ -23,6 +23,7 @@ type Config struct {
 	AccessTokenTTL    time.Duration
 	RefreshTokenTTL   time.Duration
 	AllowedOrigin     string
+	TempPassword	  string
 }
 
 func Load() (*Config, error) {
@@ -34,14 +35,15 @@ func Load() (*Config, error) {
 	}
 
 	cfg := &Config{
-		Addr:              ":" + getEnv("PORT"),
-		DatabaseURL:       getEnv("DATABASE_URL"),
-		RedisURL:          getEnv("REDIS_URL"),
-		RSAPrivateKeyPEM:  string(private_key),
-		MigrationsPath:    getEnv("MIGRATIONS_PATH"),
-		Env:               getEnv("ENV"),
-		JWTIssuer:         getEnv("JWT_ISSUER"),
-		AllowedOrigin:     getEnv("ALLOWED_ORIGIN"),
+		Addr:              	":" + getEnv("PORT"),
+		DatabaseURL:       	getEnv("DATABASE_URL"),
+		RedisURL:          	getEnv("REDIS_URL"),
+		RSAPrivateKeyPEM:  	string(private_key),
+		MigrationsPath:    	getEnv("MIGRATIONS_PATH"),
+		Env:               	getEnv("ENV"),
+		JWTIssuer:         	getEnv("JWT_ISSUER"),
+		AllowedOrigin:     	getEnv("ALLOWED_ORIGIN"),
+		TempPassword: 		getEnv("TEMP_PASSWORD"),	
 	}
 
 	limitStr := getEnv("RATE_LIMIT_REQUESTS")

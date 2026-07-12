@@ -16,12 +16,17 @@ import (
 )
 
 type StudentHandler struct {
-	studentSvc *student.Service
-	userSvc    *user.Service
+	studentSvc 		*student.Service
+	userSvc    		*user.Service
+	tempPassword 	string
 }
 
-func NewStudentHandler(studentSvc *student.Service, userSvc *user.Service) *StudentHandler {
-	return &StudentHandler{studentSvc: studentSvc, userSvc: userSvc}
+func NewStudentHandler(studentSvc *student.Service, userSvc *user.Service, tempPassword string) *StudentHandler {
+	return &StudentHandler{
+		studentSvc: 	studentSvc, 
+		userSvc: 		userSvc,
+		tempPassword: 	tempPassword,
+	}
 }
 
 func (h *StudentHandler) RegisterStudent(c *gin.Context) {
@@ -145,7 +150,7 @@ func (h *StudentHandler) CreateStudentAccount(c *gin.Context) {
 		return
 	}
 
-	password, err := crypto.GenerateTempPassword(10)
+	password, err := crypto.GenerateTempPassword(h.tempPassword, 10)
 	if err != nil {
 		writeError(c, http.StatusInternalServerError, "failed to generate password")
 		return
