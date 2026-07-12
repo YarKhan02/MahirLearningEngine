@@ -77,6 +77,18 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 		studentAdmin.POST("/:studentId/account", studentHandler.CreateStudentAccount)
 	}
 
+	// student-facing course access (My Courses / lessons / progress)
+	courseStudent := course.Group("/student", middleware.RequireRole("student"))
+	{
+		courseStudent.GET("", studentHandler.GetMyCourses)
+		courseStudent.GET("/:courseId/lessons", studentHandler.GetMyLessons)
+	}
+
+	studentPortal := studentGroup.Group("/portal", middleware.RequireRole("student"))
+	{
+		studentPortal.POST("/lessons/:lessonId/progress", studentHandler.SetLessonProgress)
+	}
+
 	// batch/admin
 	batch := r.Group("/batch", middleware.Auth(tokenSvc, redis))
 	admin = batch.Group("/admin")
