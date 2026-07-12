@@ -9,6 +9,7 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/config"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/course"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/assignment"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/attendance"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/batch"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/role"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/student"
@@ -20,7 +21,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, batchSvc *batch.Service, studentSvc *student.Service, assignmentSvc *assignment.Service, tokenSvc *token.Service, redis *redis.RedisClient) *http.Server {
+func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, batchSvc *batch.Service, studentSvc *student.Service, assignmentSvc *assignment.Service, attendanceSvc *attendance.Service, tokenSvc *token.Service, redis *redis.RedisClient) *http.Server {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.AllowedOrigin},
@@ -34,12 +35,14 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	batchHandler := handler.NewBatchHandler(batchSvc)
 	studentHandler := handler.NewStudentHandler(studentSvc, userSvc)
 	assignmentHandler := handler.NewAssignmentHandler(assignmentSvc)
+	attendanceHandler := handler.NewAttendanceHandler(attendanceSvc)
 
 	user := r.Group("/auth")
 	{
 		user.POST("/register", userHandler.RegisterAdmin)
 		user.POST("/login", userHandler.Login)
 		user.POST("/refresh", userHandler.Refresh)
+		user.POST("/logout", userHandler.Logout)
 	}
 
 	// public routes
@@ -110,6 +113,18 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 		admin.GET("", batchHandler.GetBatches)
 		admin.GET("/:batchId/courses", batchHandler.GetBatchCourses)
 		admin.PATCH("/:batchId/courses", batchHandler.UpdateBatchCourses)
+	}
+
+	attendanceGroup := r.Group("/attendance", middleware.Auth(tokenSvc, redis))
+	attendanceAdmin := attendanceGroup.Group("/admin", middleware.RequireRole("admin"))
+	{
+		attendanceAdmin.GET("/batches/:batchId", attendanceHandler.GetRoster)
+		attendanceAdmin.POST("/batches/:batchId/mark", attendanceHandler.Mark)
+		attendanceAdmin.GET("/students/:studentId", attendanceHandler.GetStudentRecords)
+	}
+	attendancePortal := attendanceGroup.Group("/portal", middleware.RequireRole("student"))
+	{
+		attendancePortal.GET("/me", attendanceHandler.GetMyRecords)
 	}
 
 	return &http.Server{

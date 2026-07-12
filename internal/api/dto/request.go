@@ -139,3 +139,9 @@ type GradeSubmissionRequest struct {
 	Marks	*int	`json:"marks" binding:"required"`
 	Remarks	string	`json:"remarks"`
 }
+
+type MarkAttendanceRequest struct {
+	Date		string	`json:"date" binding:"required"`
+	StudentID	string	`json:"studentId" binding:"required"`
+	Status		string	`json:"status" binding:"required"`
+}

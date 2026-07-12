@@ -153,3 +153,24 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		ExpiresIn:   900,
 	})
 }
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	cookie, err := c.Request.Cookie("refresh_cookie")
+	if err == nil {
+		_ = h.tokenSvc.RevokeByRawToken(c.Request.Context(), cookie.Value)
+	}
+
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteNoneMode,
+		Path:     "/",
+		MaxAge:   -1,
+	})
+
+	writeJSON(c, http.StatusOK, gin.H{
+		"message": "logged out successfully",
+	})
+}
