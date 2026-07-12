@@ -8,7 +8,9 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
 	"github.com/YarKhan02/MahirLearningEngine/internal/config"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/course"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/batch"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/role"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/student"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
@@ -17,7 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, tokenSvc *token.Service, redis *redis.RedisClient) *http.Server {
+func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, batchSvc *batch.Service, studentSvc *student.Service, tokenSvc *token.Service, redis *redis.RedisClient) *http.Server {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.AllowedOrigin},
@@ -28,6 +30,8 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 
 	userHandler := handler.NewAuthHandler(userSvc, tokenSvc)
 	courseHandler := handler.NewCourseHandler(courseSvc)
+	batchHandler := handler.NewBatchHandler(batchSvc)
+	studentHandler := handler.NewStudentHandler(studentSvc, userSvc)
 
 	user := r.Group("/auth")
 	{
@@ -35,7 +39,14 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 		user.POST("/login", userHandler.Login)
 	}
 
-	// /course/admin/
+	// public routes
+	public := r.Group("/public")
+	{
+		public.GET("/batches", batchHandler.GetPublicBatches)
+		public.POST("/students/register", studentHandler.RegisterStudent)
+	}
+
+	// course/admin/
 	course := r.Group("/course", middleware.Auth(tokenSvc, redis))
 	admin := course.Group("/admin")
 	admin.Use(
@@ -49,6 +60,35 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 		admin.GET("/:courseId/lessons", courseHandler.GetLesson)
 		admin.PATCH("/:courseId/lessons/:lessonId", courseHandler.UpdateLesson)
 		admin.PATCH("/lessons/:lessonId/reorder", courseHandler.ReorderLesson)
+	}
+
+	// student/admin/
+	studentGroup := r.Group("/student", middleware.Auth(tokenSvc, redis))
+	studentAdmin := studentGroup.Group("/admin")
+	studentAdmin.Use(
+		middleware.Auth(tokenSvc, redis),
+		middleware.RequireRole("admin"),
+	)
+	{
+		studentAdmin.GET("", studentHandler.GetStudents)
+		studentAdmin.POST("", studentHandler.AdminCreateStudent)
+		studentAdmin.PATCH("/:studentId/status", studentHandler.UpdateStudentStatus)
+		studentAdmin.PATCH("/:studentId/batch", studentHandler.UpdateStudentBatch)
+		studentAdmin.POST("/:studentId/account", studentHandler.CreateStudentAccount)
+	}
+
+	// batch/admin
+	batch := r.Group("/batch", middleware.Auth(tokenSvc, redis))
+	admin = batch.Group("/admin")
+	admin.Use(
+		middleware.Auth(tokenSvc, redis),
+		middleware.RequireRole("admin"),
+	)
+	{
+		admin.POST("", batchHandler.CreateBatch)
+		admin.GET("", batchHandler.GetBatches)
+		admin.GET("/:batchId/courses", batchHandler.GetBatchCourses)
+		admin.PATCH("/:batchId/courses", batchHandler.UpdateBatchCourses)
 	}
 
 	return &http.Server{

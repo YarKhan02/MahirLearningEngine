@@ -129,3 +129,38 @@ func (s *Service) Authenticate(ctx context.Context, email, password string) (*Us
 func (s *Service) FindByID(ctx context.Context, id uuid.UUID) (*User, error) {
 	return s.userRepo.FindByID(ctx, id)
 }
+
+func (s *Service) RegisterStudentAccount(ctx context.Context, email, password string) (*User, error) {
+	existingUser, err := s.userRepo.FindByEmailExists(ctx, email)
+	if err != nil && err != ErrUserNotFound {
+		return nil, err
+	}
+	if existingUser {
+		return nil, ErrEmailTaken
+	}
+
+	passwordHash, err := crypto.HashPassword(password)
+	if err != nil {
+		return nil, err
+	}
+
+	user := &User{
+		Email:        email,
+		PasswordHash: passwordHash,
+		IsVerified:   true,
+		IsBanned:     false,
+		Role:         "student",
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+
+	if err := s.userRepo.Create(ctx, user); err != nil {
+		return nil, err
+	}
+
+	if err := s.roleRepo.AddRoleToUser(ctx, user.ID, user.Role); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}

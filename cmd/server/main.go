@@ -11,8 +11,10 @@ import (
 
 	apihttp "github.com/YarKhan02/MahirLearningEngine/internal/api/http"
 	"github.com/YarKhan02/MahirLearningEngine/internal/config"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/batch"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/course"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/role"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/student"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/crypto"
@@ -65,15 +67,19 @@ func main () {
 
 	userRepo	:= repository.NewUserRepository(db)
 	courseRepo 	:= repository.NewCourseRepository(db)
+	batchRepo 	:= repository.NewBatchRepository(db)
 	roleRepo 	:= repository.NewRoleRepository(db)
+	studentRepo := repository.NewStudentRepository(db)
 	tokenRepo 	:= repository.NewTokenRepository(db)
 
 	userSvc 	:= user.NewService(userRepo, roleRepo)
 	courseSvc 	:= course.NewService(courseRepo)
+	batchSvc 	:= batch.NewService(batchRepo)
 	roleSvc 	:= role.NewService(roleRepo)
+	studentSvc 	:= student.NewService(studentRepo)
 	tokenSvc 	:= token.NewService(key, tokenRepo, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 
-	srv := apihttp.NewServer(cfg, userSvc, roleSvc, courseSvc, tokenSvc, redis)
+	srv := apihttp.NewServer(cfg, userSvc, roleSvc, courseSvc, batchSvc, studentSvc, tokenSvc, redis)
 
 	log.Printf("listening on: %s", cfg.Addr)
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

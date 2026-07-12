@@ -87,3 +87,34 @@ type UpdateLesson struct {
 type UpdateLessonOrderRequest struct {
     OrderNo int `json:"orderNo" binding:"required"`
 }
+
+type CreateBatchRequest struct {
+	BatchName	string		`json:"batchName"`
+	StartDate	string		`json:"startDate"`
+	EndDate		string		`json:"endDate"`
+	Capacity 	int 		`json:"capacity"`
+	Days 		string 		`json:"days"`
+	Status		string 		`json:"status"`
+}
+type UpdateBatchCoursesRequest struct {
+	AddCourseIDs	[]string	`json:"addCourseIds"`
+	RemoveCourseIDs	[]string	`json:"removeCourseIds"`
+}
+
+type RegisterStudentRequest struct {
+	FullName	string	`json:"fullName" binding:"required"`
+	Email		string	`json:"email" binding:"required,email"`
+	PhoneNumber	string	`json:"phoneNumber" binding:"required"`
+	DOB			string	`json:"dob" binding:"required"`
+	Gender		string	`json:"gender" binding:"required"`
+	BatchID		string	`json:"batchId" binding:"required"`
+}
+
+type UpdateStudentStatusRequest struct {
+	Status string `json:"status" binding:"required"`
+}
+
+type UpdateStudentBatchRequest struct {
+	// Empty string removes the student from their current batch.
+	BatchID string `json:"batchId"`
+}
