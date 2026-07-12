@@ -122,3 +122,20 @@ type UpdateStudentBatchRequest struct {
 type SetLessonProgressRequest struct {
 	Completed *bool `json:"completed" binding:"required"`
 }
+
+type CreateAssignmentRequest struct {
+	Title		string	`json:"title" binding:"required"`
+	Description	string	`json:"description"`
+	StarterCode	string	`json:"starterCode"`
+	DueDate		string	`json:"dueDate"`
+	TotalMarks	int		`json:"totalMarks"`
+}
+
+type SubmitAssignmentRequest struct {
+	Code string `json:"code" binding:"required"`
+}
+
+type GradeSubmissionRequest struct {
+	Marks	*int	`json:"marks" binding:"required"`
+	Remarks	string	`json:"remarks"`
+}

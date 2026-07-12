@@ -8,6 +8,7 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
 	"github.com/YarKhan02/MahirLearningEngine/internal/config"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/course"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/assignment"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/batch"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/role"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/student"
@@ -19,7 +20,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, batchSvc *batch.Service, studentSvc *student.Service, tokenSvc *token.Service, redis *redis.RedisClient) *http.Server {
+func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, batchSvc *batch.Service, studentSvc *student.Service, assignmentSvc *assignment.Service, tokenSvc *token.Service, redis *redis.RedisClient) *http.Server {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.AllowedOrigin},
@@ -32,11 +33,13 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	courseHandler := handler.NewCourseHandler(courseSvc)
 	batchHandler := handler.NewBatchHandler(batchSvc)
 	studentHandler := handler.NewStudentHandler(studentSvc, userSvc)
+	assignmentHandler := handler.NewAssignmentHandler(assignmentSvc)
 
 	user := r.Group("/auth")
 	{
 		user.POST("/register", userHandler.RegisterAdmin)
 		user.POST("/login", userHandler.Login)
+		user.POST("/refresh", userHandler.Refresh)
 	}
 
 	// public routes
@@ -60,15 +63,18 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 		admin.GET("/:courseId/lessons", courseHandler.GetLesson)
 		admin.PATCH("/:courseId/lessons/:lessonId", courseHandler.UpdateLesson)
 		admin.PATCH("/lessons/:lessonId/reorder", courseHandler.ReorderLesson)
+		admin.POST("/lessons/:lessonId/assignments", assignmentHandler.CreateAssignment)
+		admin.GET("/lessons/:lessonId/assignments", assignmentHandler.GetLessonAssignments)
+		admin.DELETE("/assignments/:assignmentId", assignmentHandler.DeleteAssignment)
+		admin.GET("/batches/:batchId/submissions", assignmentHandler.GetBatchSubmissions)
+		admin.PATCH("/submissions/:submissionId/grade", assignmentHandler.GradeSubmission)
 	}
 
-	// student/admin/
+	// student
 	studentGroup := r.Group("/student", middleware.Auth(tokenSvc, redis))
-	studentAdmin := studentGroup.Group("/admin")
-	studentAdmin.Use(
-		middleware.Auth(tokenSvc, redis),
-		middleware.RequireRole("admin"),
-	)
+	
+	// student/admin
+	studentAdmin := studentGroup.Group("/admin", middleware.RequireRole("admin"),)
 	{
 		studentAdmin.GET("", studentHandler.GetStudents)
 		studentAdmin.POST("", studentHandler.AdminCreateStudent)
@@ -87,6 +93,9 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	studentPortal := studentGroup.Group("/portal", middleware.RequireRole("student"))
 	{
 		studentPortal.POST("/lessons/:lessonId/progress", studentHandler.SetLessonProgress)
+		studentPortal.GET("/lessons/:lessonId/assignments", assignmentHandler.GetMyAssignments)
+		studentPortal.POST("/assignments/:assignmentId/submit", assignmentHandler.SubmitAssignment)
+		studentPortal.GET("/submissions", assignmentHandler.GetMySubmissions)
 	}
 
 	// batch/admin

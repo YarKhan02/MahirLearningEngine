@@ -52,10 +52,9 @@ func VerifyPassword(password, encodedHash string) bool {
 
 	return subtle.ConstantTimeCompare(compHash, decodedHash) == 1
 }
+
 const tempPasswordAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
 
-// GenerateTempPassword returns a random human-friendly password
-// (no ambiguous characters like 0/O or 1/l).
 func GenerateTempPassword(length int) (string, error) {
 	out := make([]byte, length)
 	for i := range out {
