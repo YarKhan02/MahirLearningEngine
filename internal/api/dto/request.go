@@ -118,3 +118,7 @@ type UpdateStudentBatchRequest struct {
 	// Empty string removes the student from their current batch.
 	BatchID string `json:"batchId"`
 }
+
+type SetLessonProgressRequest struct {
+	Completed *bool `json:"completed" binding:"required"`
+}

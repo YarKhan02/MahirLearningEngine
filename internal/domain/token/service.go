@@ -207,3 +207,7 @@ func (s *Service) JWKS() map[string]any {
 		}},
 	}
 }
+// UserUUID parses the UserID claim into a uuid.UUID.
+func (c *Claims) UserUUID() (uuid.UUID, error) {
+	return uuid.Parse(c.UserID)
+}

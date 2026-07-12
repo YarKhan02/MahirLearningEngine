@@ -8,6 +8,7 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type contextKey string
@@ -86,4 +87,29 @@ func RequireRole(role string) gin.HandlerFunc {
 func GetClaims(ctx context.Context) *token.Claims {
 	claims, _ := ctx.Value(claimsKey).(*token.Claims)
 	return claims
+}
+// CurrentUser returns the authenticated user's claims set by Auth.
+func CurrentUser(c *gin.Context) (*token.Claims, bool) {
+	value, exists := c.Get("claims")
+	if !exists {
+		return nil, false
+	}
+
+	claims, ok := value.(*token.Claims)
+	return claims, ok
+}
+
+// CurrentUserID returns the authenticated user's id from the JWT claims.
+func CurrentUserID(c *gin.Context) (uuid.UUID, bool) {
+	claims, ok := CurrentUser(c)
+	if !ok {
+		return uuid.Nil, false
+	}
+
+	userID, err := claims.UserUUID()
+	if err != nil {
+		return uuid.Nil, false
+	}
+
+	return userID, true
 }

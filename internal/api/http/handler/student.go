@@ -5,11 +5,12 @@ import (
 	"net/http"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/mapper"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/student"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/crypto"
-	
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -196,4 +197,94 @@ func (h *StudentHandler) AdminCreateStudent(c *gin.Context) {
 	}
 
 	writeJSON(c, http.StatusCreated, "successfully created student")
+}
+
+func (h *StudentHandler) GetMyCourses(c *gin.Context) {
+
+	userID, ok := middleware.CurrentUserID(c)
+	if !ok {
+		writeError(c, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	courses, err := h.studentSvc.GetStudentCourses(c.Request.Context(), userID)
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	resp := make([]dto.StudentCourseResponse, 0, len(courses))
+	for _, course := range courses {
+		resp = append(resp, mapper.ToStudentCourseResponse(course))
+	}
+
+	writeJSON(c, http.StatusOK, resp)
+}
+
+func (h *StudentHandler) GetMyLessons(c *gin.Context) {
+
+	userID, ok := middleware.CurrentUserID(c)
+	if !ok {
+		writeError(c, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	courseIDU, err := uuid.Parse(c.Param("courseId"))
+	if err != nil {
+		writeError(c, http.StatusBadRequest, "invalid course id")
+		return
+	}
+
+	lessons, err := h.studentSvc.GetStudentLessons(c.Request.Context(), userID, courseIDU)
+	if err != nil {
+		if errors.Is(err, student.ErrCourseAccessDenied) {
+			writeError(c, http.StatusForbidden, err.Error())
+			return
+		}
+		if errors.Is(err, student.ErrStudentNotFound) {
+			writeError(c, http.StatusNotFound, "student profile not found")
+			return
+		}
+		writeError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	resp := make([]dto.StudentLessonResponse, 0, len(lessons))
+	for _, lesson := range lessons {
+		resp = append(resp, mapper.ToStudentLessonResponse(lesson))
+	}
+
+	writeJSON(c, http.StatusOK, resp)
+}
+
+func (h *StudentHandler) SetLessonProgress(c *gin.Context) {
+
+	userID, ok := middleware.CurrentUserID(c)
+	if !ok {
+		writeError(c, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	lessonIDU, err := uuid.Parse(c.Param("lessonId"))
+	if err != nil {
+		writeError(c, http.StatusBadRequest, "invalid lesson id")
+		return
+	}
+
+	var req dto.SetLessonProgressRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		writeError(c, http.StatusBadRequest, "invalid request payload")
+		return
+	}
+
+	if err := h.studentSvc.SetLessonProgress(c.Request.Context(), userID, lessonIDU, *req.Completed); err != nil {
+		if errors.Is(err, student.ErrStudentNotFound) {
+			writeError(c, http.StatusNotFound, "student profile not found")
+			return
+		}
+		writeError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(c, http.StatusOK, "progress updated")
 }

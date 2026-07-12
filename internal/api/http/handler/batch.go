@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/mapper"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/batch"
-	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/helper"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -107,12 +107,8 @@ func (h *BatchHandler) UpdateBatchCourses(c *gin.Context) {
 	}
 
 	var grantedBy *uuid.UUID
-	if value, exists := c.Get("claims"); exists {
-		if claims, ok := value.(*token.Claims); ok {
-			if userID, err := uuid.Parse(claims.UserID); err == nil {
-				grantedBy = &userID
-			}
-		}
+	if userID, ok := middleware.CurrentUserID(c); ok {
+		grantedBy = &userID
 	}
 
 	err = h.batchSvc.UpdateBatchCourses(c.Request.Context(), batchIDU, add, remove, grantedBy)

@@ -44,3 +44,33 @@ func ToAdminStudentResponse(req student.StudentWithBatch) dto.AdminStudentRespon
 
 	return resp
 }
+
+func ToStudentCourseResponse(req student.StudentCourse) dto.StudentCourseResponse {
+	return dto.StudentCourseResponse{
+		ID:               req.ID.String(),
+		Title:            req.Title,
+		Level:            req.Level,
+		Duration:         req.Duration,
+		Description:      req.Description,
+		TotalLessons:     req.TotalLessons,
+		CompletedLessons: req.CompletedLessons,
+	}
+}
+
+func ToStudentLessonResponse(req student.StudentLesson) dto.StudentLessonResponse {
+	resp := dto.StudentLessonResponse{
+		ID:          req.ID.String(),
+		Title:       req.Title,
+		Description: req.Description,
+		OrderNo:     req.OrderNo,
+		YoutubeURL:  req.YoutubeURL,
+		Content:     req.Content,
+		Completed:   req.Completed,
+	}
+
+	if req.CompletedAt != nil {
+		resp.CompletedAt = req.CompletedAt.Format(time.RFC3339)
+	}
+
+	return resp
+}
