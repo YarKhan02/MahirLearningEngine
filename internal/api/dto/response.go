@@ -158,3 +158,16 @@ type BatchSubmissionResponse struct {
 	CourseID		string	`json:"courseId"`
 	CourseTitle		string	`json:"courseTitle"`
 }
+
+type RosterEntryResponse struct {
+	StudentID	string	`json:"studentId"`
+	FullName	string	`json:"fullName"`
+	Email		string	`json:"email"`
+	Status		*string	`json:"status,omitempty"`
+}
+
+type AttendanceRecordResponse struct {
+	Date		string	`json:"date"`
+	Status		string	`json:"status"`
+	BatchName	string	`json:"batchName"`
+}
