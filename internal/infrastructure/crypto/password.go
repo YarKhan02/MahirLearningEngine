@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"golang.org/x/crypto/argon2"
@@ -50,4 +51,19 @@ func VerifyPassword(password, encodedHash string) bool {
 	compHash := argon2.IDKey([]byte(password), salt, itr, mem, par, uint32(len(decodedHash)))
 
 	return subtle.ConstantTimeCompare(compHash, decodedHash) == 1
+}
+const tempPasswordAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
+
+// GenerateTempPassword returns a random human-friendly password
+// (no ambiguous characters like 0/O or 1/l).
+func GenerateTempPassword(length int) (string, error) {
+	out := make([]byte, length)
+	for i := range out {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(tempPasswordAlphabet))))
+		if err != nil {
+			return "", err
+		}
+		out[i] = tempPasswordAlphabet[n.Int64()]
+	}
+	return string(out), nil
 }

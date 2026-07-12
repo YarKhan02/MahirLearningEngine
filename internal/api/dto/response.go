@@ -48,3 +48,49 @@ type LessonResponse struct {
 	YoutubeURL 	string		`json:"youtubeUrl"`
 	Content		string		`json:"content"`
 }
+
+type BatchResponse struct {
+	ID			string		`json:"id"`
+	BatchName	string		`json:"batchName"`
+	StartDate	string		`json:"startDate"`
+	EndDate		string		`json:"endDate"`
+	Capacity 	int 		`json:"capacity"`
+	Days 		string 		`json:"days"`
+	Status		string 		`json:"status"`
+}
+type BatchCourseResponse struct {
+	ID			string	`json:"id"`
+	CourseID	string	`json:"courseId"`
+	Title		string	`json:"title"`
+	Level		string	`json:"level"`
+	GrantedAt	string	`json:"grantedAt"`
+}
+
+type PublicBatchResponse struct {
+	ID			string					`json:"id"`
+	BatchName	string					`json:"batchName"`
+	StartDate	string					`json:"startDate"`
+	EndDate		string					`json:"endDate"`
+	Capacity	int						`json:"capacity"`
+	Days		string					`json:"days"`
+	Status		string					`json:"status"`
+	Courses		[]BatchCourseResponse	`json:"courses"`
+}
+
+type AdminStudentResponse struct {
+	ID			string	`json:"id"`
+	FullName	string	`json:"fullName"`
+	Email		string	`json:"email"`
+	PhoneNumber	string	`json:"phoneNumber"`
+	DOB			string	`json:"dob"`
+	Gender		string	`json:"gender"`
+	Status		string	`json:"status"`
+	BatchID		string	`json:"batchId,omitempty"`
+	BatchName	string	`json:"batchName,omitempty"`
+	HasAccount	bool	`json:"hasAccount"`
+}
+
+type StudentAccountResponse struct {
+	Email		string	`json:"email"`
+	Password	string	`json:"password"`
+}
