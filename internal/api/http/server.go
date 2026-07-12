@@ -37,6 +37,11 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	assignmentHandler := handler.NewAssignmentHandler(assignmentSvc)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceSvc)
 
+	// Liveness probe for the deploy pipeline / Render health checks.
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
 	user := r.Group("/auth")
 	{
 		user.POST("/register", userHandler.RegisterAdmin)

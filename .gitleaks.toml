@@ -1,0 +1,9 @@
+# Extends the default gitleaks ruleset.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Non-secret paths"
+paths = [
+    '''migrations/.*\.sql''',
+]

@@ -1,0 +1,9 @@
+version: "2"
+
+# errcheck, govet, ineffassign, staticcheck, unused are enabled by default in v2.
+linters:
+  enable:
+    - bodyclose
+    - misspell
+    - gocritic
+    - revive

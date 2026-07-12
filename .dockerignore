@@ -1,0 +1,9 @@
+.git
+.github
+bin/
+keys/
+*.env
+.env*
+Makefile
+*.md
+keys/private.pem
