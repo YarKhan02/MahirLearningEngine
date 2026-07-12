@@ -40,7 +40,7 @@ func (h *BatchHandler) CreateBatch(c *gin.Context) {
 		return
 	}
 
-	writeJSON(c, http.StatusCreated, "succesfully created batch")
+	writeJSON(c, http.StatusCreated, "successfully created batch")
 }
 
 func (h *BatchHandler) GetBatches(c *gin.Context) {

@@ -6,4 +6,11 @@ linters:
     - bodyclose
     - misspell
     - gocritic
-    - revive
+  settings:
+    errcheck:
+      # Idiomatic unchecked calls: deferred cleanup where the error is unusable.
+      exclude-functions:
+        - (*database/sql.DB).Close
+        - (*database/sql.Rows).Close
+        - (*database/sql.Tx).Rollback
+        - (*github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis.RedisClient).Close

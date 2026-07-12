@@ -43,7 +43,9 @@ func VerifyPassword(password, encodedHash string) bool {
 
 	var mem, itr uint32
 	var par uint8
-	fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &mem, &itr, &par)
+	if _, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &mem, &itr, &par); err != nil {
+		return false
+	}
 
 	salt, _ := base64.RawStdEncoding.DecodeString(parts[4])
 	decodedHash, _ := base64.RawStdEncoding.DecodeString(parts[5])

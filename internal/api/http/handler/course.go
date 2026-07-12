@@ -140,7 +140,7 @@ func (h *CourseHandler) UpdateLesson(c *gin.Context) {
 		return
 	}
 
-	writeJSON(c, http.StatusOK, "succesfully updated")
+	writeJSON(c, http.StatusOK, "successfully updated")
 }
 
 func (h *CourseHandler) ReorderLesson(c *gin.Context) {
