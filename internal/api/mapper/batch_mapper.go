@@ -5,18 +5,18 @@ import (
 	"time"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
+	"github.com/YarKhan02/MahirLearningEngine/internal/constant"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/batch"
+	"github.com/google/uuid"
 )
 
-const dateLayout = "2006-01-02"
-
 func ToCreateBatch(req dto.CreateBatchRequest) (*batch.Batch, error) {
-	startDate, err := time.Parse(dateLayout, req.StartDate)
+	startDate, err := time.Parse(constant.DateLayout, req.StartDate)
 	if err != nil {
 		return nil, fmt.Errorf("invalid startDate: %w", err)
 	}
 
-	endDate, err := time.Parse(dateLayout, req.EndDate)
+	endDate, err := time.Parse(constant.DateLayout, req.EndDate)
 	if err != nil {
 		return nil, fmt.Errorf("invalid endDate: %w", err)
 	}
@@ -28,6 +28,30 @@ func ToCreateBatch(req dto.CreateBatchRequest) (*batch.Batch, error) {
 		Capacity:  req.Capacity,
 		Days:      req.Days,
 		Status:    req.Status,
+		Price:     req.Price,
+	}, nil
+}
+
+func ToUpdateBatch(id uuid.UUID, req dto.UpdateBatchRequest) (*batch.Batch, error) {
+	startDate, err := time.Parse(constant.DateLayout, req.StartDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid startDate: %w", err)
+	}
+
+	endDate, err := time.Parse(constant.DateLayout, req.EndDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid endDate: %w", err)
+	}
+
+	return &batch.Batch{
+		ID:        id,
+		BatchName: req.BatchName,
+		StartDate: startDate,
+		EndDate:   endDate,
+		Capacity:  req.Capacity,
+		Days:      req.Days,
+		Status:    req.Status,
+		Price:     req.Price,
 	}, nil
 }
 
@@ -35,11 +59,12 @@ func ToBatchResponse(req batch.Batch) dto.BatchResponse {
 	return dto.BatchResponse{
 		ID: req.ID.String(),
 		BatchName: req.BatchName,
-		StartDate: req.StartDate.Format(dateLayout),
-		EndDate: req.EndDate.Format(dateLayout),
+		StartDate: req.StartDate.Format(constant.DateLayout),
+		EndDate: req.EndDate.Format(constant.DateLayout),
 		Capacity: req.Capacity,
 		Days: req.Days,
 		Status: req.Status,
+		Price: req.Price,
 	}
 }
 func ToBatchCourseResponse(req batch.BatchCourse) dto.BatchCourseResponse {
@@ -61,11 +86,12 @@ func ToPublicBatchResponse(req batch.BatchWithCourses) dto.PublicBatchResponse {
 	return dto.PublicBatchResponse{
 		ID:        req.ID.String(),
 		BatchName: req.BatchName,
-		StartDate: req.StartDate.Format(dateLayout),
-		EndDate:   req.EndDate.Format(dateLayout),
+		StartDate: req.StartDate.Format(constant.DateLayout),
+		EndDate:   req.EndDate.Format(constant.DateLayout),
 		Capacity:  req.Capacity,
 		Days:      req.Days,
 		Status:    req.Status,
+		Price:     req.Price,
 		Courses:   courses,
 	}
 }

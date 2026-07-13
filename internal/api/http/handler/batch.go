@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
@@ -41,6 +42,60 @@ func (h *BatchHandler) CreateBatch(c *gin.Context) {
 	}
 
 	writeJSON(c, http.StatusCreated, "successfully created batch")
+}
+
+func (h *BatchHandler) UpdateBatch(c *gin.Context) {
+
+	batchIDU, err := uuid.Parse(c.Param("batchId"))
+	if err != nil {
+		writeError(c, http.StatusBadRequest, "invalid batch id")
+		return
+	}
+
+	var req dto.UpdateBatchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		writeError(c, http.StatusBadRequest, "invalid request payload")
+		return
+	}
+
+	updated, err := mapper.ToUpdateBatch(batchIDU, req)
+	if err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	err = h.batchSvc.UpdateBatch(c.Request.Context(), updated)
+	if err != nil {
+		if errors.Is(err, batch.ErrBatchNotFound) {
+			writeError(c, http.StatusNotFound, "batch not found")
+			return
+		}
+		writeError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(c, http.StatusOK, "successfully updated batch")
+}
+
+func (h *BatchHandler) DeleteBatch(c *gin.Context) {
+
+	batchIDU, err := uuid.Parse(c.Param("batchId"))
+	if err != nil {
+		writeError(c, http.StatusBadRequest, "invalid batch id")
+		return
+	}
+
+	err = h.batchSvc.DeleteBatch(c.Request.Context(), batchIDU)
+	if err != nil {
+		if errors.Is(err, batch.ErrBatchNotFound) {
+			writeError(c, http.StatusNotFound, "batch not found")
+			return
+		}
+		writeError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(c, http.StatusOK, "successfully deleted batch")
 }
 
 func (h *BatchHandler) GetBatches(c *gin.Context) {

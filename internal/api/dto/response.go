@@ -57,6 +57,7 @@ type BatchResponse struct {
 	Capacity 	int 		`json:"capacity"`
 	Days 		string 		`json:"days"`
 	Status		string 		`json:"status"`
+	Price		int			`json:"price"`
 }
 type BatchCourseResponse struct {
 	ID			string	`json:"id"`
@@ -74,6 +75,7 @@ type PublicBatchResponse struct {
 	Capacity	int						`json:"capacity"`
 	Days		string					`json:"days"`
 	Status		string					`json:"status"`
+	Price		int						`json:"price"`
 	Courses		[]BatchCourseResponse	`json:"courses"`
 }
 
@@ -170,4 +172,42 @@ type AttendanceRecordResponse struct {
 	Date		string	`json:"date"`
 	Status		string	`json:"status"`
 	BatchName	string	`json:"batchName"`
+}
+
+type AdminDashboardResponse struct {
+	TotalStudents		int							`json:"totalStudents"`
+	ActiveStudents		int							`json:"activeStudents"`
+	PendingStudents		int							`json:"pendingStudents"`
+	PendingSubmissions	int							`json:"pendingSubmissions"`
+	RecentSubmissions	[]DashboardSubmission		`json:"recentSubmissions"`
+	UpcomingBatches		[]DashboardUpcomingBatch	`json:"upcomingBatches"`
+	RecentStudents		[]DashboardStudent			`json:"recentStudents"`
+}
+
+type DashboardSubmission struct {
+	ID				string	`json:"id"`
+	StudentName		string	`json:"studentName"`
+	AssignmentTitle	string	`json:"assignmentTitle"`
+	CourseTitle		string	`json:"courseTitle"`
+	Status			string	`json:"status"`
+	SubmittedAt		string	`json:"submittedAt"`
+}
+
+type DashboardUpcomingBatch struct {
+	ID			string	`json:"id"`
+	BatchName	string	`json:"batchName"`
+	StartDate	string	`json:"startDate"`
+	Days		string	`json:"days"`
+	Price		int		`json:"price"`
+	Capacity	int		`json:"capacity"`
+	Enrolled	int		`json:"enrolled"`
+}
+
+type DashboardStudent struct {
+	ID			string	`json:"id"`
+	FullName	string	`json:"fullName"`
+	Email		string	`json:"email"`
+	Status		string	`json:"status"`
+	BatchName	string	`json:"batchName,omitempty"`
+	CreatedAt	string	`json:"createdAt"`
 }

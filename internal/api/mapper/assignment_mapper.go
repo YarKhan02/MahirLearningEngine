@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
+	"github.com/YarKhan02/MahirLearningEngine/internal/constant"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/assignment"
 	"github.com/google/uuid"
 )
@@ -19,7 +20,7 @@ func ToCreateAssignment(req dto.CreateAssignmentRequest, lessonID uuid.UUID) (*a
 	}
 
 	if req.DueDate != "" {
-		dueDate, err := time.Parse(dateLayout, req.DueDate)
+		dueDate, err := time.Parse(constant.DateLayout, req.DueDate)
 		if err != nil {
 			return nil, fmt.Errorf("invalid dueDate: %w", err)
 		}
@@ -41,7 +42,7 @@ func ToAssignmentResponse(req assignment.Assignment) dto.AssignmentResponse {
 	}
 
 	if req.DueDate != nil {
-		resp.DueDate = req.DueDate.Format(dateLayout)
+		resp.DueDate = req.DueDate.Format(constant.DateLayout)
 	}
 
 	return resp

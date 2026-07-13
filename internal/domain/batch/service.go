@@ -2,9 +2,12 @@ package batch
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 )
+
+var ErrBatchNotFound = errors.New("batch not found")
 
 type Service struct {
 	repo Repository
@@ -16,6 +19,14 @@ func NewService(repo Repository) *Service {
 
 func (s *Service) CreateBatch(ctx context.Context, req *Batch) error {
 	return s.repo.CreateBatch(ctx, req)
+}
+
+func (s *Service) UpdateBatch(ctx context.Context, req *Batch) error {
+	return s.repo.UpdateBatch(ctx, req)
+}
+
+func (s *Service) DeleteBatch(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteBatch(ctx, id)
 }
 
 func (s *Service) GetBatches(ctx context.Context) ([]Batch, error) {

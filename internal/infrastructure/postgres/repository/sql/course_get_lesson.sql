@@ -6,4 +6,5 @@ SELECT
     youtube_url,
     content
 FROM lesson
-ORDER BY created_at DESC;
+WHERE course_id = $1
+ORDER BY order_no ASC;

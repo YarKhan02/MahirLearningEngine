@@ -95,7 +95,18 @@ type CreateBatchRequest struct {
 	Capacity 	int 		`json:"capacity"`
 	Days 		string 		`json:"days"`
 	Status		string 		`json:"status"`
+	Price		int			`json:"price"`
 }
+type UpdateBatchRequest struct {
+	BatchName	string		`json:"batchName"`
+	StartDate	string		`json:"startDate"`
+	EndDate		string		`json:"endDate"`
+	Capacity 	int 		`json:"capacity"`
+	Days 		string 		`json:"days"`
+	Status		string 		`json:"status"`
+	Price		int			`json:"price"`
+}
+
 type UpdateBatchCoursesRequest struct {
 	AddCourseIDs	[]string	`json:"addCourseIds"`
 	RemoveCourseIDs	[]string	`json:"removeCourseIds"`

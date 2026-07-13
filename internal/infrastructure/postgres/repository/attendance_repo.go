@@ -66,7 +66,7 @@ func (r *AttendanceRepository) GetRoster(ctx context.Context, batchID uuid.UUID,
 	return roster, nil
 }
 
-func (r *AttendanceRepository) Mark(ctx context.Context, batchID uuid.UUID, date time.Time, studentID uuid.UUID, status string, createdBy *uuid.UUID) error {
+func (r *AttendanceRepository) Mark(ctx context.Context, req attendance.MarkAttendance) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("mark attendance: begin tx: %w", err)
@@ -83,9 +83,9 @@ func (r *AttendanceRepository) Mark(ctx context.Context, batchID uuid.UUID, date
 		ctx,
 		attendanceSessionUpsertSQL,
 		sessionID,
-		batchID,
-		date,
-		createdBy,
+		req.BatchID,
+		req.Date,
+		req.CreatedBy,
 	).Scan(&sessionID); err != nil {
 		return fmt.Errorf("upsert attendance session: %w", err)
 	}
@@ -95,7 +95,7 @@ func (r *AttendanceRepository) Mark(ctx context.Context, batchID uuid.UUID, date
 		return err
 	}
 
-	if _, err := tx.ExecContext(ctx, attendanceMarkUpsertSQL, markID, sessionID, studentID, status); err != nil {
+	if _, err := tx.ExecContext(ctx, attendanceMarkUpsertSQL, markID, sessionID, req.StudentID, req.Status); err != nil {
 		return fmt.Errorf("upsert attendance: %w", err)
 	}
 

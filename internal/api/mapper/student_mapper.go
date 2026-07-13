@@ -5,11 +5,12 @@ import (
 	"time"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
+	"github.com/YarKhan02/MahirLearningEngine/internal/constant"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/student"
 )
 
 func ToRegisterStudent(req dto.RegisterStudentRequest) (*student.Student, error) {
-	dob, err := time.Parse(dateLayout, req.DOB)
+	dob, err := time.Parse(constant.DateLayout, req.DOB)
 	if err != nil {
 		return nil, fmt.Errorf("invalid dob: %w", err)
 	}
@@ -29,7 +30,7 @@ func ToAdminStudentResponse(req student.StudentWithBatch) dto.AdminStudentRespon
 		FullName:    req.FullName,
 		Email:       req.Email,
 		PhoneNumber: req.PhoneNumber,
-		DOB:         req.DOB.Format(dateLayout),
+		DOB:         req.DOB.Format(constant.DateLayout),
 		Gender:      req.Gender,
 		Status:      req.Status,
 		HasAccount:  req.HasAccount,

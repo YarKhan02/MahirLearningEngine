@@ -1,0 +1,2 @@
+ALTER TABLE batches
+    ADD COLUMN price INTEGER NOT NULL DEFAULT 0 CHECK (price >= 0);

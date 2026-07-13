@@ -14,6 +14,7 @@ type Batch struct {
 	Capacity 	int
 	Days 		string
 	Status		string
+	Price		int
 }
 type BatchCourse struct {
 	ID			uuid.UUID

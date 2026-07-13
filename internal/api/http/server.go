@@ -8,6 +8,7 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
 	"github.com/YarKhan02/MahirLearningEngine/internal/config"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/course"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/dashboard"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/assignment"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/attendance"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/batch"
@@ -21,7 +22,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, batchSvc *batch.Service, studentSvc *student.Service, assignmentSvc *assignment.Service, attendanceSvc *attendance.Service, tokenSvc *token.Service, redis *redis.RedisClient) *http.Server {
+func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, batchSvc *batch.Service, studentSvc *student.Service, assignmentSvc *assignment.Service, attendanceSvc *attendance.Service, dashboardSvc *dashboard.Service, tokenSvc *token.Service, redis *redis.RedisClient) *http.Server {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.AllowedOrigin, "https://www.mahircodelab.com"},
@@ -36,6 +37,7 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	studentHandler := handler.NewStudentHandler(studentSvc, userSvc, cfg.TempPassword)
 	assignmentHandler := handler.NewAssignmentHandler(assignmentSvc)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceSvc)
+	dashboardHandler := handler.NewDashboardHandler(dashboardSvc)
 
 	// Liveness probe for the deploy pipeline / Render health checks.
 	r.GET("/health", func(c *gin.Context) {
@@ -67,6 +69,7 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	{
 		admin.POST("", courseHandler.InsertCourse)
 		admin.GET("", courseHandler.GetCourse)
+		admin.DELETE("/:courseId", courseHandler.DeleteCourse)
 		admin.POST("/:courseId/lessons", courseHandler.InsertLesson)
 		admin.GET("/:courseId/lessons", courseHandler.GetLesson)
 		admin.PATCH("/:courseId/lessons/:lessonId", courseHandler.UpdateLesson)
@@ -116,20 +119,33 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	{
 		admin.POST("", batchHandler.CreateBatch)
 		admin.GET("", batchHandler.GetBatches)
+		admin.PATCH("/:batchId", batchHandler.UpdateBatch)
+		admin.DELETE("/:batchId", batchHandler.DeleteBatch)
 		admin.GET("/:batchId/courses", batchHandler.GetBatchCourses)
 		admin.PATCH("/:batchId/courses", batchHandler.UpdateBatchCourses)
 	}
 
+	// attendance
 	attendanceGroup := r.Group("/attendance", middleware.Auth(tokenSvc, redis))
+	
+	// attendance/admin
 	attendanceAdmin := attendanceGroup.Group("/admin", middleware.RequireRole("admin"))
 	{
 		attendanceAdmin.GET("/batches/:batchId", attendanceHandler.GetRoster)
 		attendanceAdmin.POST("/batches/:batchId/mark", attendanceHandler.Mark)
 		attendanceAdmin.GET("/students/:studentId", attendanceHandler.GetStudentRecords)
 	}
+	
+	// attendance/student
 	attendancePortal := attendanceGroup.Group("/portal", middleware.RequireRole("student"))
 	{
 		attendancePortal.GET("/me", attendanceHandler.GetMyRecords)
+	}
+
+	dashboardGroup := r.Group("/dashboard", middleware.Auth(tokenSvc, redis))
+	dashboardAdmin := dashboardGroup.Group("/admin", middleware.RequireRole("admin"))
+	{
+		dashboardAdmin.GET("", dashboardHandler.GetAdminDashboard)
 	}
 
 	return &http.Server{
