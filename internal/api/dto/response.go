@@ -78,6 +78,15 @@ type PublicBatchResponse struct {
 	Courses		[]BatchCourseResponse	`json:"courses"`
 }
 
+type AnnouncementResponse struct {
+	ID			string	`json:"id"`
+	BatchID		string	`json:"batchId"`
+	BatchName	string	`json:"batchName"`
+	Title		string	`json:"title"`
+	Description	string	`json:"description"`
+	CreatedAt	string	`json:"createdAt"`
+}
+
 type TimetableResponse struct {
 	ID			string	`json:"id"`
 	BatchID		string	`json:"batchId"`

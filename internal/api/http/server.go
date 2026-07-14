@@ -8,6 +8,7 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/handler"
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
 	"github.com/YarKhan02/MahirLearningEngine/internal/config"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/announcement"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/course"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/dashboard"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/assignment"
@@ -24,7 +25,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, batchSvc *batch.Service, studentSvc *student.Service, assignmentSvc *assignment.Service, attendanceSvc *attendance.Service, dashboardSvc *dashboard.Service, timetableSvc *timetable.Service, tokenSvc *token.Service, redis *redis.RedisClient) *http.Server {
+func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, batchSvc *batch.Service, studentSvc *student.Service, assignmentSvc *assignment.Service, attendanceSvc *attendance.Service, dashboardSvc *dashboard.Service, timetableSvc *timetable.Service, announcementSvc *announcement.Service, tokenSvc *token.Service, redis *redis.RedisClient) *http.Server {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.AllowedOrigin, "https://www.mahircodelab.com"},
@@ -44,6 +45,7 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	attendanceHandler := handler.NewAttendanceHandler(attendanceSvc)
 	dashboardHandler := handler.NewDashboardHandler(dashboardSvc)
 	timetableHandler := handler.NewTimetableHandler(timetableSvc)
+	announcementHandler := handler.NewAnnouncementHandler(announcementSvc)
 
 	// Liveness probe for the deploy pipeline / Render health checks.
 	r.GET("/health", func(c *gin.Context) {
@@ -156,6 +158,21 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	dashboardAdmin := dashboardGroup.Group("/admin", middleware.RequireRole("admin"))
 	{
 		dashboardAdmin.GET("", dashboardHandler.GetAdminDashboard)
+	}
+
+	// announcements
+	announcementGroup := r.Group("/announcement", middleware.Auth(tokenSvc, redis))
+
+	announcementAdmin := announcementGroup.Group("/admin", middleware.RequireRole("admin"))
+	{
+		announcementAdmin.POST("", announcementHandler.CreateAnnouncement)
+		announcementAdmin.GET("", announcementHandler.GetAnnouncements)
+		announcementAdmin.DELETE("/:announcementId", announcementHandler.DeleteAnnouncement)
+	}
+
+	announcementPortal := announcementGroup.Group("/portal", middleware.RequireRole("student"))
+	{
+		announcementPortal.GET("", announcementHandler.GetMyAnnouncements)
 	}
 
 	return &http.Server{
