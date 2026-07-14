@@ -56,7 +56,6 @@ func (r *BatchRepository) CreateBatch(ctx context.Context, batch *batch.Batch) e
 		batch.StartDate,
 		batch.EndDate,
 		batch.Capacity,
-		batch.Days,
 		batch.Status,
 		batch.Price,
 	)
@@ -76,7 +75,6 @@ func (r *BatchRepository) UpdateBatch(ctx context.Context, b *batch.Batch) error
 		b.StartDate,
 		b.EndDate,
 		b.Capacity,
-		b.Days,
 		b.Status,
 		b.Price,
 	)
@@ -132,7 +130,6 @@ func (r *BatchRepository) GetBatches(ctx context.Context) ([]batch.Batch, error)
 			&b.StartDate,
 			&b.EndDate,
 			&b.Capacity,
-			&b.Days,
 			&b.Status,
 			&b.Price,
 		); err != nil {

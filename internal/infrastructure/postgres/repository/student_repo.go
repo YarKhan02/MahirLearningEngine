@@ -74,6 +74,7 @@ func (r *StudentRepository) RegisterStudent(ctx context.Context, s *student.Stud
 		studentCreateSQL,
 		s.ID,
 		s.Email,
+		s.Username,
 		s.FullName,
 		s.PhoneNumber,
 		s.DOB,
@@ -81,8 +82,8 @@ func (r *StudentRepository) RegisterStudent(ctx context.Context, s *student.Stud
 		s.Status,
 	)
 	if err != nil {
-		if strings.Contains(err.Error(), "students_email_key") {
-			return student.ErrEmailAlreadyRegistered
+		if strings.Contains(err.Error(), "students_username_key") {
+			return student.ErrUsernameAlreadyRegistered
 		}
 		return fmt.Errorf("register student: %w", err)
 	}
@@ -114,6 +115,7 @@ func (r *StudentRepository) GetStudents(ctx context.Context, q string) ([]studen
 		if err := rows.Scan(
 			&s.ID,
 			&s.Email,
+			&s.Username,
 			&s.FullName,
 			&s.PhoneNumber,
 			&s.DOB,
@@ -142,6 +144,7 @@ func (r *StudentRepository) GetStudentByID(ctx context.Context, id uuid.UUID) (*
 	err := r.db.QueryRowContext(ctx, studentGetByIDSQL, id).Scan(
 		&s.ID,
 		&s.Email,
+		&s.Username,
 		&s.FullName,
 		&s.PhoneNumber,
 		&s.DOB,

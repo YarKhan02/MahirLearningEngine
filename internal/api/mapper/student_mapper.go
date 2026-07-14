@@ -17,6 +17,7 @@ func ToRegisterStudent(req dto.RegisterStudentRequest) (*student.Student, error)
 
 	return &student.Student{
 		Email:       req.Email,
+		Username:    req.Username,
 		FullName:    req.FullName,
 		PhoneNumber: req.PhoneNumber,
 		DOB:         dob,
@@ -28,6 +29,7 @@ func ToAdminStudentResponse(req student.StudentWithBatch) dto.AdminStudentRespon
 	resp := dto.AdminStudentResponse{
 		ID:          req.ID.String(),
 		FullName:    req.FullName,
+		Username:    req.Username,
 		Email:       req.Email,
 		PhoneNumber: req.PhoneNumber,
 		DOB:         req.DOB.Format(constant.DateLayout),

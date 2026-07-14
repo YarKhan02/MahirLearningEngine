@@ -2,7 +2,6 @@ SELECT
     b.id,
     b.batch_name,
     b.start_date,
-    b.days,
     b.price,
     b.capacity,
     (SELECT COUNT(*) FROM student_batches sb WHERE sb.batch_id = b.id) AS enrolled

@@ -20,10 +20,11 @@ type TokenResponse struct {
 }
 
 type AuthUser struct {
-	ID 		string		`json:"id"`
-	Name 	string		`json:"name"`
-	Email 	string		`json:"email"`
-	Role 	string		`json:"role"`
+	ID 			string		`json:"id"`
+	Name 		string		`json:"name"`
+	Username	string		`json:"username,omitempty"`
+	Email 		string		`json:"email"`
+	Role 		string		`json:"role"`
 }
 
 type LoginResponse struct {
@@ -55,7 +56,6 @@ type BatchResponse struct {
 	StartDate	string		`json:"startDate"`
 	EndDate		string		`json:"endDate"`
 	Capacity 	int 		`json:"capacity"`
-	Days 		string 		`json:"days"`
 	Status		string 		`json:"status"`
 	Price		int			`json:"price"`
 }
@@ -73,15 +73,36 @@ type PublicBatchResponse struct {
 	StartDate	string					`json:"startDate"`
 	EndDate		string					`json:"endDate"`
 	Capacity	int						`json:"capacity"`
-	Days		string					`json:"days"`
 	Status		string					`json:"status"`
 	Price		int						`json:"price"`
 	Courses		[]BatchCourseResponse	`json:"courses"`
 }
 
+type TimetableResponse struct {
+	ID			string	`json:"id"`
+	BatchID		string	`json:"batchId"`
+	CourseID	string	`json:"courseId"`
+	CourseTitle	string	`json:"courseTitle"`
+	Weekdays	[]int	`json:"weekdays"`
+	StartTime	string	`json:"startTime"`
+	EndTime		string	`json:"endTime"`
+}
+
+type ClassSessionResponse struct {
+	Date		string	`json:"date"`
+	Weekday		int		`json:"weekday"`
+	StartTime	string	`json:"startTime"`
+	EndTime		string	`json:"endTime"`
+	CourseID	string	`json:"courseId"`
+	CourseTitle	string	`json:"courseTitle"`
+	BatchID		string	`json:"batchId"`
+	BatchName	string	`json:"batchName"`
+}
+
 type AdminStudentResponse struct {
 	ID			string	`json:"id"`
 	FullName	string	`json:"fullName"`
+	Username	string	`json:"username"`
 	Email		string	`json:"email"`
 	PhoneNumber	string	`json:"phoneNumber"`
 	DOB			string	`json:"dob"`
@@ -93,7 +114,7 @@ type AdminStudentResponse struct {
 }
 
 type StudentAccountResponse struct {
-	Email		string	`json:"email"`
+	Username	string	`json:"username"`
 	Password	string	`json:"password"`
 }
 
@@ -197,7 +218,6 @@ type DashboardUpcomingBatch struct {
 	ID			string	`json:"id"`
 	BatchName	string	`json:"batchName"`
 	StartDate	string	`json:"startDate"`
-	Days		string	`json:"days"`
 	Price		int		`json:"price"`
 	Capacity	int		`json:"capacity"`
 	Enrolled	int		`json:"enrolled"`

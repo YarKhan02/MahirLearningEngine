@@ -26,7 +26,6 @@ type UpcomingBatch struct {
 	ID        uuid.UUID
 	BatchName string
 	StartDate time.Time
-	Days      string
 	Price     int
 	Capacity  int
 	Enrolled  int

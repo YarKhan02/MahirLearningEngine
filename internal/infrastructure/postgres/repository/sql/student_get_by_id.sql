@@ -1,6 +1,7 @@
 SELECT
     id,
     email,
+    username,
     full_name,
     phone_number,
     dob,

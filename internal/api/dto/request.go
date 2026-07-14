@@ -45,15 +45,16 @@ func (r RegisterRequest) Validate() error {
 }
 
 type LoginRequest struct {
-	Email    string     `json:"email"`
-	Password string     `json:"password"`
+	// Identifier is an email (admins) or a username (students).
+	Identifier string     `json:"identifier"`
+	Password   string     `json:"password"`
 }
 
 func (r LoginRequest) Validate() error {
-	r.Email = strings.TrimSpace(r.Email)
+	r.Identifier = strings.TrimSpace(r.Identifier)
 	r.Password = strings.TrimSpace(r.Password)
-	if r.Email == "" || r.Password == "" {
-		return fmt.Errorf("email and password are required")
+	if r.Identifier == "" || r.Password == "" {
+		return fmt.Errorf("identifier and password are required")
 	}
 	return nil
 }
@@ -93,7 +94,6 @@ type CreateBatchRequest struct {
 	StartDate	string		`json:"startDate"`
 	EndDate		string		`json:"endDate"`
 	Capacity 	int 		`json:"capacity"`
-	Days 		string 		`json:"days"`
 	Status		string 		`json:"status"`
 	Price		int			`json:"price"`
 }
@@ -102,9 +102,15 @@ type UpdateBatchRequest struct {
 	StartDate	string		`json:"startDate"`
 	EndDate		string		`json:"endDate"`
 	Capacity 	int 		`json:"capacity"`
-	Days 		string 		`json:"days"`
 	Status		string 		`json:"status"`
 	Price		int			`json:"price"`
+}
+
+type CreateTimetableRequest struct {
+	CourseID	string	`json:"courseId" binding:"required"`
+	Weekdays	[]int	`json:"weekdays" binding:"required"`
+	StartTime	string	`json:"startTime" binding:"required"`
+	EndTime		string	`json:"endTime" binding:"required"`
 }
 
 type UpdateBatchCoursesRequest struct {
@@ -114,6 +120,7 @@ type UpdateBatchCoursesRequest struct {
 
 type RegisterStudentRequest struct {
 	FullName	string	`json:"fullName" binding:"required"`
+	Username	string	`json:"username" binding:"required"`
 	Email		string	`json:"email" binding:"required,email"`
 	PhoneNumber	string	`json:"phoneNumber" binding:"required"`
 	DOB			string	`json:"dob" binding:"required"`

@@ -84,7 +84,7 @@ func (r *DashboardRepository) upcomingBatches(ctx context.Context) ([]dashboard.
 	var out []dashboard.UpcomingBatch
 	for rows.Next() {
 		var b dashboard.UpcomingBatch
-		if err := rows.Scan(&b.ID, &b.BatchName, &b.StartDate, &b.Days, &b.Price, &b.Capacity, &b.Enrolled); err != nil {
+		if err := rows.Scan(&b.ID, &b.BatchName, &b.StartDate, &b.Price, &b.Capacity, &b.Enrolled); err != nil {
 			return nil, fmt.Errorf("scan upcoming batch: %w", err)
 		}
 		out = append(out, b)

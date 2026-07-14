@@ -9,6 +9,7 @@ import (
 type Student struct {
 	ID			uuid.UUID
 	Email		string
+	Username	string
 	FullName	string
 	PhoneNumber	string
 	DOB			time.Time

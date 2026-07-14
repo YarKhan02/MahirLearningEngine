@@ -12,7 +12,6 @@ type Batch struct {
 	StartDate	time.Time
 	EndDate		time.Time
 	Capacity 	int
-	Days 		string
 	Status		string
 	Price		int
 }

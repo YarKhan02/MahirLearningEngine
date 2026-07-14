@@ -35,7 +35,6 @@ func ToAdminDashboardResponse(d *dashboard.AdminDashboard) dto.AdminDashboardRes
 			ID:        b.ID.String(),
 			BatchName: b.BatchName,
 			StartDate: b.StartDate.Format(constant.DateLayout),
-			Days:      b.Days,
 			Price:     b.Price,
 			Capacity:  b.Capacity,
 			Enrolled:  b.Enrolled,

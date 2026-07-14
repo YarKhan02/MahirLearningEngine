@@ -26,7 +26,6 @@ func ToCreateBatch(req dto.CreateBatchRequest) (*batch.Batch, error) {
 		StartDate: startDate,
 		EndDate:   endDate,
 		Capacity:  req.Capacity,
-		Days:      req.Days,
 		Status:    req.Status,
 		Price:     req.Price,
 	}, nil
@@ -49,7 +48,6 @@ func ToUpdateBatch(id uuid.UUID, req dto.UpdateBatchRequest) (*batch.Batch, erro
 		StartDate: startDate,
 		EndDate:   endDate,
 		Capacity:  req.Capacity,
-		Days:      req.Days,
 		Status:    req.Status,
 		Price:     req.Price,
 	}, nil
@@ -62,7 +60,6 @@ func ToBatchResponse(req batch.Batch) dto.BatchResponse {
 		StartDate: req.StartDate.Format(constant.DateLayout),
 		EndDate: req.EndDate.Format(constant.DateLayout),
 		Capacity: req.Capacity,
-		Days: req.Days,
 		Status: req.Status,
 		Price: req.Price,
 	}
@@ -89,7 +86,6 @@ func ToPublicBatchResponse(req batch.BatchWithCourses) dto.PublicBatchResponse {
 		StartDate: req.StartDate.Format(constant.DateLayout),
 		EndDate:   req.EndDate.Format(constant.DateLayout),
 		Capacity:  req.Capacity,
-		Days:      req.Days,
 		Status:    req.Status,
 		Price:     req.Price,
 		Courses:   courses,

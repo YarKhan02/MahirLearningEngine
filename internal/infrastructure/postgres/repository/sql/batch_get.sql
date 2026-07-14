@@ -4,7 +4,6 @@ SELECT
     start_date,
     end_date,
     capacity,
-    days,
     status,
     price
 FROM batches
