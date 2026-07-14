@@ -9,11 +9,11 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/mapper"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/attendance"
+	"github.com/YarKhan02/MahirLearningEngine/internal/constant"
+	
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
-
-const attendanceDateLayout = "2006-01-02"
 
 type AttendanceHandler struct {
 	attendanceSvc *attendance.Service
@@ -34,10 +34,10 @@ func (h *AttendanceHandler) GetRoster(c *gin.Context) {
 
 	dateStr := c.Query("date")
 	if dateStr == "" {
-		dateStr = time.Now().Format(attendanceDateLayout)
+		dateStr = time.Now().Format(constant.DateLayout)
 	}
 
-	date, err := time.Parse(attendanceDateLayout, dateStr)
+	date, err := time.Parse(constant.DateLayout, dateStr)
 	if err != nil {
 		writeError(c, http.StatusBadRequest, "invalid date")
 		return
@@ -71,7 +71,7 @@ func (h *AttendanceHandler) Mark(c *gin.Context) {
 		return
 	}
 
-	date, err := time.Parse(attendanceDateLayout, req.Date)
+	date, err := time.Parse(constant.DateLayout, req.Date)
 	if err != nil {
 		writeError(c, http.StatusBadRequest, "invalid date")
 		return
@@ -83,12 +83,14 @@ func (h *AttendanceHandler) Mark(c *gin.Context) {
 		return
 	}
 
-	var createdBy *uuid.UUID
+	var createdBy uuid.UUID
 	if userID, ok := middleware.CurrentUserID(c); ok {
-		createdBy = &userID
+		createdBy = userID
 	}
 
-	err = h.attendanceSvc.Mark(c.Request.Context(), batchIDU, date, studentIDU, req.Status, createdBy)
+	markAttendance := mapper.ToMarkAttendance(batchIDU, date, studentIDU, req.Status, createdBy)
+
+	err = h.attendanceSvc.Mark(c.Request.Context(), markAttendance)
 	if err != nil {
 		if errors.Is(err, attendance.ErrInvalidStatus) {
 			writeError(c, http.StatusBadRequest, err.Error())

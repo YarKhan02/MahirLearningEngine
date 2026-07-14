@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/student"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
 
@@ -12,12 +13,38 @@ import (
 )
 
 type AuthHandler struct {
-	userSvc  *user.Service
-	tokenSvc *token.Service
+	userSvc    *user.Service
+	studentSvc *student.Service
+	tokenSvc   *token.Service
+	secureCookies bool
 }
 
-func NewAuthHandler(userSvc *user.Service, tokenSvc *token.Service) *AuthHandler {
-	return &AuthHandler{userSvc: userSvc, tokenSvc: tokenSvc}
+func NewAuthHandler(userSvc *user.Service, studentSvc *student.Service, tokenSvc *token.Service, secureCookies bool) *AuthHandler {
+	return &AuthHandler{userSvc: userSvc, studentSvc: studentSvc, tokenSvc: tokenSvc, secureCookies: secureCookies}
+}
+
+const refreshCookieName = "refresh_token"
+const refreshCookieMaxAge = 30 * 24 * 60 * 60 // 30 days, in seconds
+
+// setRefreshCookie writes the HttpOnly refresh-token cookie with attributes
+// appropriate to the environment. Over HTTPS (production) it uses
+// SameSite=None + Secure so the cookie survives a cross-site request from the
+// SPA; over plain HTTP (local dev) those attributes would make the browser drop
+// the cookie, so it falls back to SameSite=Lax without Secure.
+func (h *AuthHandler) setRefreshCookie(c *gin.Context, value string, maxAge int) {
+	cookie := &http.Cookie{
+		Name:     refreshCookieName,
+		Value:    value,
+		HttpOnly: true,
+		Path:     "/",
+		MaxAge:   maxAge,
+		Secure:   h.secureCookies,
+		SameSite: http.SameSiteLaxMode,
+	}
+	if h.secureCookies {
+		cookie.SameSite = http.SameSiteNoneMode
+	}
+	http.SetCookie(c.Writer, cookie)
 }
 
 func (h *AuthHandler) RegisterAdmin(c *gin.Context) {
@@ -59,7 +86,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	u, err := h.userSvc.Authenticate(c.Request.Context(), req.Email, req.Password)
+	u, err := h.userSvc.Authenticate(c.Request.Context(), req.Identifier, req.Password)
 	if err != nil {
 		switch err {
 		case user.ErrAccountLocked:
@@ -91,24 +118,28 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// refresh token in HttpOnly cookie, access token in body
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     "refresh_token",
-		Value:    refreshToken,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteNoneMode,
-		Path:     "/",
-		MaxAge:   30 * 24 * 60 * 60,
-	})
+	h.setRefreshCookie(c, refreshToken, refreshCookieMaxAge)
+
+	// Admins carry their email on the account; students don't, so pull their
+	// real name and contact email from the student record for portal display.
+	authUser := dto.AuthUser{
+		ID:       u.ID.String(),
+		Name:     u.Email,
+		Username: u.Username,
+		Email:    u.Email,
+		Role:     u.Role,
+	}
+	if u.Role == "student" {
+		if profile, perr := h.studentSvc.GetProfileByUserID(c.Request.Context(), u.ID); perr == nil && profile != nil {
+			authUser.Name = profile.FullName
+			authUser.Email = profile.Email
+			authUser.Username = profile.Username
+		}
+	}
 
 	writeJSON(c, http.StatusOK, dto.LoginResponse{
 		AccessToken: accessToken,
-		User: dto.AuthUser{
-			ID: 	u.ID.String(),
-			Name: 	"yarkhan",
-			Email: 	u.Email,
-			Role: 	u.Role,
-		},
+		User:        authUser,
 	})
 }
 
@@ -138,15 +169,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     "refresh_token",
-		Value:    newRawToken,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteNoneMode,
-		Path:     "/",
-		MaxAge:   30 * 24 * 60 * 60,
-	})
+	h.setRefreshCookie(c, newRawToken, refreshCookieMaxAge)
 
 	writeJSON(c, http.StatusOK, dto.TokenResponse{
 		AccessToken: accessToken,
@@ -155,20 +178,12 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	cookie, err := c.Request.Cookie("refresh_cookie")
+	cookie, err := c.Request.Cookie(refreshCookieName)
 	if err == nil {
 		_ = h.tokenSvc.RevokeByRawToken(c.Request.Context(), cookie.Value)
 	}
 
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     "refresh_token",
-		Value:    "",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteNoneMode,
-		Path:     "/",
-		MaxAge:   -1,
-	})
+	h.setRefreshCookie(c, "", -1)
 
 	writeJSON(c, http.StatusOK, gin.H{
 		"message": "logged out successfully",

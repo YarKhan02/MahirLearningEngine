@@ -1,6 +1,7 @@
 INSERT INTO students (
     id,
     email,
+    username,
     full_name,
     phone_number,
     dob,
@@ -10,5 +11,5 @@ INSERT INTO students (
     updated_at
 )
 VALUES (
-    $1, $2, $3, $4, $5, $6, $7, NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()
 );

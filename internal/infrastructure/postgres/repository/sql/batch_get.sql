@@ -4,7 +4,7 @@ SELECT
     start_date,
     end_date,
     capacity,
-    days,
-    status
+    status,
+    price
 FROM batches
 ORDER BY created_at DESC

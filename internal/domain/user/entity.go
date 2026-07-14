@@ -9,6 +9,7 @@ import (
 type User struct {
 	ID				uuid.UUID
 	Email 			string
+	Username 		string
 	PasswordHash 	string
 	IsVerified 		bool
 	IsBanned 		bool

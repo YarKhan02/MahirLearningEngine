@@ -19,6 +19,12 @@ var userFindByEmailExistsSQL string
 //go:embed sql/user_find_by_email.sql
 var userFindByEmailSQL string
 
+//go:embed sql/user_find_by_login.sql
+var userFindByLoginSQL string
+
+//go:embed sql/user_find_by_username_exists.sql
+var userFindByUsernameExistsSQL string
+
 //go:embed sql/user_find_by_id.sql
 var userFindByIDSQL string
 
@@ -39,9 +45,17 @@ func (r *UserRepository) Create(ctx context.Context, u *user.User) error {
 		return err
 	}
 	u.ID = id
+
+	// Admins log in by email (no username); students log in by username and
+	// store NO email (siblings may share one). Empty values are stored as NULL
+	// so the UNIQUE indexes ignore them.
+	email := sql.NullString{String: u.Email, Valid: u.Email != ""}
+	username := sql.NullString{String: u.Username, Valid: u.Username != ""}
+
 	err = r.db.QueryRowContext(ctx, userCreateSQL,
 		u.ID,
-		u.Email,
+		email,
+		username,
 		u.PasswordHash,
 		u.IsVerified,
 		u.IsBanned,
@@ -49,6 +63,44 @@ func (r *UserRepository) Create(ctx context.Context, u *user.User) error {
 		u.LockedUntil,
 	).Scan(&u.CreatedAt, &u.UpdatedAt)
 	return err
+}
+
+func (r *UserRepository) FindByLoginIdentifier(ctx context.Context, identifier string) (*user.User, error) {
+	var u user.User
+	var email, username sql.NullString
+
+	err := r.db.QueryRowContext(ctx, userFindByLoginSQL, identifier).Scan(
+		&u.ID,
+		&email,
+		&username,
+		&u.PasswordHash,
+		&u.IsVerified,
+		&u.IsBanned,
+		&u.FailedAttempts,
+		&u.LockedUntil,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	u.Email = email.String
+	u.Username = username.String
+	return &u, nil
+}
+
+func (r *UserRepository) FindByUsernameExists(ctx context.Context, username string) (bool, error) {
+	var exists bool
+
+	err := r.db.QueryRowContext(ctx, userFindByUsernameExistsSQL, username).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }
 
 func (r *UserRepository) FindByEmailExists(ctx context.Context, email string) (bool, error) {
@@ -65,10 +117,11 @@ func (r *UserRepository) FindByEmailExists(ctx context.Context, email string) (b
 
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*user.User, error) {
 	var u user.User
+	var emailVal sql.NullString
 
 	err := r.db.QueryRowContext(ctx, userFindByEmailSQL, email).Scan(
 		&u.ID,
-		&u.Email,
+		&emailVal,
 		&u.PasswordHash,
 		&u.IsVerified,
 		&u.IsBanned,
@@ -82,15 +135,19 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*user.U
 		}
 		return nil, err
 	}
+
+	u.Email = emailVal.String
 	return &u, nil
 }
 
 func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
 	var u user.User
 
+	var email sql.NullString
+
 	err := r.db.QueryRowContext(ctx, userFindByIDSQL, id).Scan(
 		&u.ID,
-		&u.Email,
+		&email,
 		&u.IsVerified,
 		&u.IsBanned,
 		&u.FailedAttempts,
@@ -103,6 +160,8 @@ func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*user.User
 		}
 		return nil, err
 	}
+
+	u.Email = email.String
 	return &u, nil
 }
 

@@ -13,6 +13,12 @@ import (
 //go:embed sql/batch_create.sql
 var batchCreateSQL string
 
+//go:embed sql/batch_update.sql
+var batchUpdateSQL string
+
+//go:embed sql/batch_delete.sql
+var batchDeleteSQL string
+
 //go:embed sql/batch_get.sql
 var batchGetAllSQL string
 
@@ -50,11 +56,57 @@ func (r *BatchRepository) CreateBatch(ctx context.Context, batch *batch.Batch) e
 		batch.StartDate,
 		batch.EndDate,
 		batch.Capacity,
-		batch.Days,
 		batch.Status,
+		batch.Price,
 	)
 	if err != nil {
 		return fmt.Errorf("create batch: %w", err)
+	}
+
+	return nil
+}
+
+func (r *BatchRepository) UpdateBatch(ctx context.Context, b *batch.Batch) error {
+	res, err := r.db.ExecContext(
+		ctx,
+		batchUpdateSQL,
+		b.ID,
+		b.BatchName,
+		b.StartDate,
+		b.EndDate,
+		b.Capacity,
+		b.Status,
+		b.Price,
+	)
+	if err != nil {
+		return fmt.Errorf("update batch: %w", err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update batch: rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		return batch.ErrBatchNotFound
+	}
+
+	return nil
+}
+
+func (r *BatchRepository) DeleteBatch(ctx context.Context, id uuid.UUID) error {
+	res, err := r.db.ExecContext(ctx, batchDeleteSQL, id)
+	if err != nil {
+		return fmt.Errorf("delete batch: %w", err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete batch: rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		return batch.ErrBatchNotFound
 	}
 
 	return nil
@@ -78,8 +130,8 @@ func (r *BatchRepository) GetBatches(ctx context.Context) ([]batch.Batch, error)
 			&b.StartDate,
 			&b.EndDate,
 			&b.Capacity,
-			&b.Days,
 			&b.Status,
+			&b.Price,
 		); err != nil {
 			return nil, fmt.Errorf("scan batch: %w", err)
 		}

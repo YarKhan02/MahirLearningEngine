@@ -2,17 +2,20 @@ package http
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/handler"
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
 	"github.com/YarKhan02/MahirLearningEngine/internal/config"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/course"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/dashboard"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/assignment"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/attendance"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/batch"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/role"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/student"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/timetable"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
@@ -21,7 +24,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, batchSvc *batch.Service, studentSvc *student.Service, assignmentSvc *assignment.Service, attendanceSvc *attendance.Service, tokenSvc *token.Service, redis *redis.RedisClient) *http.Server {
+func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, batchSvc *batch.Service, studentSvc *student.Service, assignmentSvc *assignment.Service, attendanceSvc *attendance.Service, dashboardSvc *dashboard.Service, timetableSvc *timetable.Service, tokenSvc *token.Service, redis *redis.RedisClient) *http.Server {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.AllowedOrigin, "https://www.mahircodelab.com"},
@@ -30,12 +33,17 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 		AllowCredentials: true,
 	}))
 
-	userHandler := handler.NewAuthHandler(userSvc, tokenSvc)
+	// Secure cookies (SameSite=None) only work over HTTPS; in local HTTP dev we
+	// must fall back to a plain SameSite=Lax cookie or the browser drops it.
+	secureCookies := !strings.EqualFold(cfg.Env, "development")
+	userHandler := handler.NewAuthHandler(userSvc, studentSvc, tokenSvc, secureCookies)
 	courseHandler := handler.NewCourseHandler(courseSvc)
 	batchHandler := handler.NewBatchHandler(batchSvc)
 	studentHandler := handler.NewStudentHandler(studentSvc, userSvc, cfg.TempPassword)
 	assignmentHandler := handler.NewAssignmentHandler(assignmentSvc)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceSvc)
+	dashboardHandler := handler.NewDashboardHandler(dashboardSvc)
+	timetableHandler := handler.NewTimetableHandler(timetableSvc)
 
 	// Liveness probe for the deploy pipeline / Render health checks.
 	r.GET("/health", func(c *gin.Context) {
@@ -67,6 +75,7 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	{
 		admin.POST("", courseHandler.InsertCourse)
 		admin.GET("", courseHandler.GetCourse)
+		admin.DELETE("/:courseId", courseHandler.DeleteCourse)
 		admin.POST("/:courseId/lessons", courseHandler.InsertLesson)
 		admin.GET("/:courseId/lessons", courseHandler.GetLesson)
 		admin.PATCH("/:courseId/lessons/:lessonId", courseHandler.UpdateLesson)
@@ -104,6 +113,7 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 		studentPortal.GET("/lessons/:lessonId/assignments", assignmentHandler.GetMyAssignments)
 		studentPortal.POST("/assignments/:assignmentId/submit", assignmentHandler.SubmitAssignment)
 		studentPortal.GET("/submissions", assignmentHandler.GetMySubmissions)
+		studentPortal.GET("/timetable", timetableHandler.GetMyUpcoming)
 	}
 
 	// batch/admin
@@ -116,20 +126,36 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	{
 		admin.POST("", batchHandler.CreateBatch)
 		admin.GET("", batchHandler.GetBatches)
+		admin.PATCH("/:batchId", batchHandler.UpdateBatch)
+		admin.DELETE("/:batchId", batchHandler.DeleteBatch)
 		admin.GET("/:batchId/courses", batchHandler.GetBatchCourses)
 		admin.PATCH("/:batchId/courses", batchHandler.UpdateBatchCourses)
+		admin.POST("/:batchId/timetable", timetableHandler.CreateTimetable)
+		admin.GET("/:batchId/timetable", timetableHandler.GetBatchTimetable)
+		admin.DELETE("/timetable/:timetableId", timetableHandler.DeleteTimetable)
 	}
 
+	// attendance
 	attendanceGroup := r.Group("/attendance", middleware.Auth(tokenSvc, redis))
+	
+	// attendance/admin
 	attendanceAdmin := attendanceGroup.Group("/admin", middleware.RequireRole("admin"))
 	{
 		attendanceAdmin.GET("/batches/:batchId", attendanceHandler.GetRoster)
 		attendanceAdmin.POST("/batches/:batchId/mark", attendanceHandler.Mark)
 		attendanceAdmin.GET("/students/:studentId", attendanceHandler.GetStudentRecords)
 	}
+	
+	// attendance/student
 	attendancePortal := attendanceGroup.Group("/portal", middleware.RequireRole("student"))
 	{
 		attendancePortal.GET("/me", attendanceHandler.GetMyRecords)
+	}
+
+	dashboardGroup := r.Group("/dashboard", middleware.Auth(tokenSvc, redis))
+	dashboardAdmin := dashboardGroup.Group("/admin", middleware.RequireRole("admin"))
+	{
+		dashboardAdmin.GET("", dashboardHandler.GetAdminDashboard)
 	}
 
 	return &http.Server{

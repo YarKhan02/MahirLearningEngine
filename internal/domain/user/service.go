@@ -14,6 +14,7 @@ import (
 var (
 	ErrUserNotFound       = errors.New("user not found")
 	ErrEmailTaken         = errors.New("email already registered")
+	ErrUsernameTaken      = errors.New("username already taken")
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrAccountLocked      = errors.New("account temporarily locked")
 	ErrAccountBanned      = errors.New("account banned")
@@ -82,8 +83,8 @@ func (s *Service) RegisterAdmin(ctx context.Context, req dto.RegisterRequest) (*
 	return user, nil
 }
 
-func (s *Service) Authenticate(ctx context.Context, email, password string) (*User, error) {
-	u, err := s.userRepo.FindByEmail(ctx, email)
+func (s *Service) Authenticate(ctx context.Context, identifier string, password string) (*User, error) {
+	u, err := s.userRepo.FindByLoginIdentifier(ctx, identifier)
 	if err != nil || u == nil {
 		// constant-time even on not found to prevent timing attacks
 		crypto.HashPassword(password) //nolint:errcheck
@@ -130,13 +131,13 @@ func (s *Service) FindByID(ctx context.Context, id uuid.UUID) (*User, error) {
 	return s.userRepo.FindByID(ctx, id)
 }
 
-func (s *Service) RegisterStudentAccount(ctx context.Context, email, password string) (*User, error) {
-	existingUser, err := s.userRepo.FindByEmailExists(ctx, email)
+func (s *Service) RegisterStudentAccount(ctx context.Context, username, password string) (*User, error) {
+	usernameTaken, err := s.userRepo.FindByUsernameExists(ctx, username)
 	if err != nil && err != ErrUserNotFound {
 		return nil, err
 	}
-	if existingUser {
-		return nil, ErrEmailTaken
+	if usernameTaken {
+		return nil, ErrUsernameTaken
 	}
 
 	passwordHash, err := crypto.HashPassword(password)
@@ -145,7 +146,7 @@ func (s *Service) RegisterStudentAccount(ctx context.Context, email, password st
 	}
 
 	user := &User{
-		Email:        email,
+		Username:     username,
 		PasswordHash: passwordHash,
 		IsVerified:   true,
 		IsBanned:     false,

@@ -51,8 +51,8 @@ func (h *StudentHandler) RegisterStudent(c *gin.Context) {
 
 	err = h.studentSvc.RegisterStudent(c.Request.Context(), s, batchIDU)
 	if err != nil {
-		if errors.Is(err, student.ErrEmailAlreadyRegistered) {
-			writeError(c, http.StatusConflict, "this email is already registered")
+		if errors.Is(err, student.ErrUsernameAlreadyRegistered) {
+			writeError(c, http.StatusConflict, "this username is already taken")
 			return
 		}
 		writeError(c, http.StatusInternalServerError, err.Error())
@@ -156,8 +156,8 @@ func (h *StudentHandler) CreateStudentAccount(c *gin.Context) {
 		return
 	}
 
-	if _, err := h.userSvc.RegisterStudentAccount(c.Request.Context(), s.Email, password); err != nil {
-		if errors.Is(err, user.ErrEmailTaken) {
+	if _, err := h.userSvc.RegisterStudentAccount(c.Request.Context(), s.Username, password); err != nil {
+		if errors.Is(err, user.ErrUsernameTaken) {
 			writeError(c, http.StatusConflict, "this student already has an account")
 			return
 		}
@@ -166,7 +166,7 @@ func (h *StudentHandler) CreateStudentAccount(c *gin.Context) {
 	}
 
 	writeJSON(c, http.StatusCreated, dto.StudentAccountResponse{
-		Email:    s.Email,
+		Username: s.Username,
 		Password: password,
 	})
 }
@@ -193,8 +193,8 @@ func (h *StudentHandler) AdminCreateStudent(c *gin.Context) {
 
 	err = h.studentSvc.RegisterStudent(c.Request.Context(), s, batchIDU)
 	if err != nil {
-		if errors.Is(err, student.ErrEmailAlreadyRegistered) {
-			writeError(c, http.StatusConflict, "this email is already registered")
+		if errors.Is(err, student.ErrUsernameAlreadyRegistered) {
+			writeError(c, http.StatusConflict, "this username is already taken")
 			return
 		}
 		writeError(c, http.StatusInternalServerError, err.Error())

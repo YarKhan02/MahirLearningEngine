@@ -8,9 +8,10 @@ import (
 )
 
 var (
-	ErrEmailAlreadyRegistered = errors.New("this email is already registered")
-	ErrStudentNotFound        = errors.New("student not found")
-	ErrCourseAccessDenied     = errors.New("you do not have access to this course")
+	ErrEmailAlreadyRegistered    = errors.New("this email is already registered")
+	ErrUsernameAlreadyRegistered = errors.New("this username is already taken")
+	ErrStudentNotFound           = errors.New("student not found")
+	ErrCourseAccessDenied        = errors.New("you do not have access to this course")
 )
 
 type Service struct {
@@ -31,6 +32,16 @@ func (s *Service) GetStudents(ctx context.Context, q string) ([]StudentWithBatch
 
 func (s *Service) GetStudentByID(ctx context.Context, id uuid.UUID) (*Student, error) {
 	return s.repo.GetStudentByID(ctx, id)
+}
+
+// GetProfileByUserID resolves the student record behind a login account,
+// so the portal can show the student's real name and contact email.
+func (s *Service) GetProfileByUserID(ctx context.Context, userID uuid.UUID) (*Student, error) {
+	studentID, err := s.repo.GetStudentIDByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.GetStudentByID(ctx, studentID)
 }
 
 func (s *Service) UpdateStudentStatus(ctx context.Context, id uuid.UUID, status string) error {

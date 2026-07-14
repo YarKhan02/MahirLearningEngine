@@ -12,6 +12,9 @@ type Repository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*User, error)
 	FindByEmail(ctx context.Context, email string) (*User, error)
 	FindByEmailExists(ctx context.Context, email string) (bool, error)
+	FindByUsernameExists(ctx context.Context, username string) (bool, error)
+	// FindByLoginIdentifier matches a user by either email or username.
+	FindByLoginIdentifier(ctx context.Context, identifier string) (*User, error)
 	// Update(ctx context.Context, u *User) error
 	// UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error
 	UpdateFailedAttempts(ctx context.Context, id uuid.UUID, attempts int, lockedUntil *time.Time) error

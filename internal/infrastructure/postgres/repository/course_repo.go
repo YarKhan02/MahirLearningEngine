@@ -18,6 +18,9 @@ var courseInsertSQL string
 //go:embed sql/course_get.sql
 var courseGetSQL string
 
+//go:embed sql/course_delete.sql
+var courseDeleteSQL string
+
 //go:embed sql/course_exists.sql
 var courseExistsSQL string
 
@@ -49,8 +52,8 @@ var courseLessonMoveUpSQL string
 var courseLessonUpdateOrderSQL string
 
 var (
-	ErrLessonNotFound  = errors.New("lesson not found")
-	ErrInvalidOrderNo  = errors.New("order_no out of range")
+	ErrLessonNotFound = errors.New("lesson not found")
+	ErrInvalidOrderNo = errors.New("order_no out of range")
 )
 
 type CoursRepository struct {
@@ -64,7 +67,7 @@ func NewCourseRepository(db *sql.DB) *CoursRepository {
 }
 
 func (r *CoursRepository) InsertCourse(ctx context.Context, req course.Course) (*course.Course, error) {
-	
+
 	id, err := uuid.NewV7()
 	if err != nil {
 		return nil, err
@@ -79,11 +82,11 @@ func (r *CoursRepository) InsertCourse(ctx context.Context, req course.Course) (
 
 	var course course.Course
 
-	err = r.db.QueryRowContext(ctx, courseInsertSQL, 
-		id, 
+	err = r.db.QueryRowContext(ctx, courseInsertSQL,
+		id,
 		req.Title,
-		req.Level, 
-		req.Duration, 
+		req.Level,
+		req.Duration,
 		description,
 	).Scan(
 		&course.ID,
@@ -99,6 +102,24 @@ func (r *CoursRepository) InsertCourse(ctx context.Context, req course.Course) (
 	}
 
 	return &course, nil
+}
+
+func (r *CoursRepository) DeleteCourse(ctx context.Context, id uuid.UUID) error {
+	res, err := r.db.ExecContext(ctx, courseDeleteSQL, id)
+	if err != nil {
+		return fmt.Errorf("delete course: %w", err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete course: rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		return course.ErrCourseNotFound
+	}
+
+	return nil
 }
 
 func (r *CoursRepository) GetCourse(ctx context.Context) ([]course.Course, error) {
@@ -129,7 +150,7 @@ func (r *CoursRepository) GetCourse(ctx context.Context) ([]course.Course, error
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err 
+		return nil, err
 	}
 
 	return courses, nil
@@ -147,15 +168,15 @@ func (r *CoursRepository) CourseExists(ctx context.Context, id uuid.UUID) bool {
 }
 
 func (r *CoursRepository) InsertLesson(ctx context.Context, req course.Lesson) error {
-	
+
 	id, err := uuid.NewV7()
 	if err != nil {
-		return err 
+		return err
 	}
 
 	req.ID = id
 
-	_, err = r.db.ExecContext(ctx, courseInsertLessonSQL, 
+	_, err = r.db.ExecContext(ctx, courseInsertLessonSQL,
 		req.ID,
 		req.CourseID,
 		req.Title,
@@ -166,14 +187,14 @@ func (r *CoursRepository) InsertLesson(ctx context.Context, req course.Lesson) e
 	)
 
 	if err != nil {
-		return err 
-	} 
+		return err
+	}
 
 	return nil
 }
 
 func (r *CoursRepository) GetLesson(ctx context.Context, id uuid.UUID) ([]course.Lesson, error) {
-	rows, err := r.db.QueryContext(ctx, courseGetLessonSQL)
+	rows, err := r.db.QueryContext(ctx, courseGetLessonSQL, id)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +220,7 @@ func (r *CoursRepository) GetLesson(ctx context.Context, id uuid.UUID) ([]course
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err 
+		return nil, err
 	}
 
 	return lessons, nil
@@ -219,47 +240,47 @@ func (r *CoursRepository) LessonExists(ctx context.Context, id uuid.UUID) bool {
 func (r *CoursRepository) UpdateLesson(ctx context.Context, req course.UpdateLesson) error {
 	query := courseLessonUpdateSQL + " "
 	args := []any{}
-    idx := 1
+	idx := 1
 
-    if req.Title != nil {
-        query += fmt.Sprintf("title = $%d,", idx)
-        args = append(args, *req.Title)
-        idx++
-    }
+	if req.Title != nil {
+		query += fmt.Sprintf("title = $%d,", idx)
+		args = append(args, *req.Title)
+		idx++
+	}
 
-    if req.Description != nil {
-        query += fmt.Sprintf("description = $%d,", idx)
-        args = append(args, *req.Description)
-        idx++
-    }
+	if req.Description != nil {
+		query += fmt.Sprintf("description = $%d,", idx)
+		args = append(args, *req.Description)
+		idx++
+	}
 
-    if req.YoutubeURL != nil {
-        query += fmt.Sprintf("youtube_url = $%d,", idx)
-        args = append(args, *req.YoutubeURL)
-        idx++
-    }
+	if req.YoutubeURL != nil {
+		query += fmt.Sprintf("youtube_url = $%d,", idx)
+		args = append(args, *req.YoutubeURL)
+		idx++
+	}
 
-    if req.Content != nil {
-        query += fmt.Sprintf("content = $%d,", idx)
-        args = append(args, *req.Content)
-        idx++
-    }
+	if req.Content != nil {
+		query += fmt.Sprintf("content = $%d,", idx)
+		args = append(args, *req.Content)
+		idx++
+	}
 
-    if len(args) == 0 {
-        return nil // nothing to update
-    }
+	if len(args) == 0 {
+		return nil // nothing to update
+	}
 
-    // Remove trailing comma
-    query = strings.TrimSuffix(query, ",")
+	// Remove trailing comma
+	query = strings.TrimSuffix(query, ",")
 
-    query += fmt.Sprintf(
-        " WHERE id = $%d AND course_id = $%d",
-        idx, idx+1,
-    )
+	query += fmt.Sprintf(
+		" WHERE id = $%d AND course_id = $%d",
+		idx, idx+1,
+	)
 
-    args = append(args, req.ID, req.CourseID)
+	args = append(args, req.ID, req.CourseID)
 
-    _, err := r.db.ExecContext(ctx, query, args...)
+	_, err := r.db.ExecContext(ctx, query, args...)
 
 	return err
 }
@@ -279,7 +300,7 @@ func (r *CoursRepository) ReorderLesson(ctx context.Context, lessonID uuid.UUID,
 	err = tx.QueryRowContext(ctx, courseLessonOrderNoSQL, lessonID).Scan(&courseID, &oldNo)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrLessonNotFound
-	} 
+	}
 	if err != nil {
 		return fmt.Errorf("lock lesson: %w", err)
 	}
@@ -303,16 +324,16 @@ func (r *CoursRepository) ReorderLesson(ctx context.Context, lessonID uuid.UUID,
 		// Moving down the list: everything strictly after the old spot,
 		// up to and including the target, shifts up by one.
 		_, err = tx.ExecContext(ctx, courseLessonMoveDownSQL,
-			courseID, 
-			oldNo, 
+			courseID,
+			oldNo,
 			orderNo,
 		)
 	} else {
 		// Moving up the list: everything from the target up to
 		// (but not including) the old spot shifts down by one.
 		_, err = tx.ExecContext(ctx, courseLessonMoveUpSQL,
-			courseID, 
-			orderNo, 
+			courseID,
+			orderNo,
 			oldNo,
 		)
 	}
@@ -322,7 +343,7 @@ func (r *CoursRepository) ReorderLesson(ctx context.Context, lessonID uuid.UUID,
 
 	// Drop the moved lesson into its final slot.
 	_, err = tx.ExecContext(ctx, courseLessonUpdateOrderSQL,
-		orderNo, 
+		orderNo,
 		lessonID,
 	)
 	if err != nil {

@@ -7,7 +7,9 @@ import (
 )
 
 type Repository interface {
-	CreateBatch(ctx context.Context, req *Batch) error 
+	CreateBatch(ctx context.Context, req *Batch) error
+	UpdateBatch(ctx context.Context, req *Batch) error
+	DeleteBatch(ctx context.Context, id uuid.UUID) error
 	GetBatches(ctx context.Context) ([]Batch, error)
 	GetBatchCourses(ctx context.Context, batchID uuid.UUID) ([]BatchCourse, error)
 	UpdateBatchCourses(ctx context.Context, batchID uuid.UUID, add []uuid.UUID, remove []uuid.UUID, grantedBy *uuid.UUID) error

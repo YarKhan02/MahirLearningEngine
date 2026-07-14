@@ -31,6 +31,10 @@ func (s *Service) GetCourse(ctx context.Context) ([]Course, error) {
 	return s.repo.GetCourse(ctx)
 }
 
+func (s *Service) DeleteCourse(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteCourse(ctx, id)
+}
+
 func (s *Service) InsertLesson(ctx context.Context, req Lesson) error {
 
 	isCourseID := s.repo.CourseExists(ctx, req.CourseID)

@@ -21,3 +21,11 @@ type Record struct {
 	Status     string
 	BatchName  string
 }
+
+type MarkAttendance struct {
+	BatchID 	uuid.UUID
+	Date 		time.Time
+	StudentID 	uuid.UUID
+	Status 		string
+	CreatedBy 	uuid.UUID
+}

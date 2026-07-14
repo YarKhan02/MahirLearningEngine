@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
@@ -52,6 +53,27 @@ func (h *CourseHandler) GetCourse(c *gin.Context) {
 	}
 
 	writeJSON(c, http.StatusOK, resp)
+}
+
+func (h *CourseHandler) DeleteCourse(c *gin.Context) {
+
+	courseIDU, err := uuid.Parse(c.Param("courseId"))
+	if err != nil {
+		writeError(c, http.StatusBadRequest, "invalid course id")
+		return
+	}
+
+	err = h.courseSvc.DeleteCourse(c.Request.Context(), courseIDU)
+	if err != nil {
+		if errors.Is(err, course.ErrCourseNotFound) {
+			writeError(c, http.StatusNotFound, "course not found")
+			return
+		}
+		writeError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(c, http.StatusOK, "successfully deleted course")
 }
 
 func (h *CourseHandler) InsertLesson(c *gin.Context) {

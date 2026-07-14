@@ -25,11 +25,11 @@ func (s *Service) GetRoster(ctx context.Context, batchID uuid.UUID, date time.Ti
 	return s.repo.GetRoster(ctx, batchID, date)
 }
 
-func (s *Service) Mark(ctx context.Context, batchID uuid.UUID, date time.Time, studentID uuid.UUID, status string, createdBy *uuid.UUID) error {
-	if status != "present" && status != "absent" {
+func (s *Service) Mark(ctx context.Context, req MarkAttendance) error {
+	if req.Status != "present" && req.Status != "absent" {
 		return ErrInvalidStatus
 	}
-	return s.repo.Mark(ctx, batchID, date, studentID, status, createdBy)
+	return s.repo.Mark(ctx, req)
 }
 
 func (s *Service) GetStudentRecords(ctx context.Context, studentID uuid.UUID) ([]Record, error) {
