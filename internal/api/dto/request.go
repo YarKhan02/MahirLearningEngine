@@ -106,6 +106,12 @@ type UpdateBatchRequest struct {
 	Price		int			`json:"price"`
 }
 
+type CreateAnnouncementRequest struct {
+	BatchID		string	`json:"batchId" binding:"required"`
+	Title		string	`json:"title" binding:"required"`
+	Description	string	`json:"description" binding:"required"`
+}
+
 type CreateTimetableRequest struct {
 	CourseID	string	`json:"courseId" binding:"required"`
 	Weekdays	[]int	`json:"weekdays" binding:"required"`
