@@ -1,12 +1,7 @@
-package mapper
+package course
 
-import (
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
-	"github.com/YarKhan02/MahirLearningEngine/internal/domain/course"
-)
-
-func ToCourse(dto dto.InsertCourse) course.Course {
-	return course.Course{
+func ToCourse(dto InsertCourse) Course {
+	return Course{
 		Title:       dto.Title,
 		Level:       dto.Level,
 		Duration:    dto.Duration,
@@ -14,13 +9,13 @@ func ToCourse(dto dto.InsertCourse) course.Course {
 	}
 }
 
-func ToCourseResponse(course course.Course) dto.CourseResponse {
+func ToCourseResponse(course Course) CourseResponse {
 	status := "archived"
 	if course.IsActive {
 		status = "active"
 	}
 
-	return dto.CourseResponse{
+	return CourseResponse{
 		ID:          course.ID,
 		Title:       course.Title,
 		Level:       course.Level,
@@ -30,8 +25,8 @@ func ToCourseResponse(course course.Course) dto.CourseResponse {
 	}
 }
 
-func ToLesson(dto dto.InsertLesson) course.Lesson {
-	return course.Lesson{
+func ToLesson(dto InsertLesson) Lesson {
+	return Lesson{
 		ID:          dto.ID,
 		CourseID:    dto.CourseID,
 		Title:       dto.Title,
@@ -42,8 +37,8 @@ func ToLesson(dto dto.InsertLesson) course.Lesson {
 	}
 }
 
-func ToLessonResponse(lesson course.Lesson) dto.LessonResponse {
-	return dto.LessonResponse{
+func ToLessonResponse(lesson Lesson) LessonResponse {
+	return LessonResponse{
 		ID:          lesson.ID.String(),
 		Title:       lesson.Title,
 		Description: lesson.Description,
@@ -53,8 +48,8 @@ func ToLessonResponse(lesson course.Lesson) dto.LessonResponse {
 	}
 }
 
-func ToUpdateLesson(dto dto.UpdateLesson) course.UpdateLesson {
-	return course.UpdateLesson{
+func ToUpdateLesson(dto UpdateLessonRequest) UpdateLesson {
+	return UpdateLesson{
 		ID:          dto.ID,
 		CourseID:    dto.CourseID,
 		Title:       dto.Title,

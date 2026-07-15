@@ -1,17 +1,16 @@
-package mapper
+package assignment
 
 import (
 	"fmt"
 	"time"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
 	"github.com/YarKhan02/MahirLearningEngine/internal/constant"
-	"github.com/YarKhan02/MahirLearningEngine/internal/domain/assignment"
+	
 	"github.com/google/uuid"
 )
 
-func ToCreateAssignment(req dto.CreateAssignmentRequest, lessonID uuid.UUID) (*assignment.Assignment, error) {
-	a := &assignment.Assignment{
+func ToCreateAssignment(req CreateAssignmentRequest, lessonID uuid.UUID) (*Assignment, error) {
+	a := &Assignment{
 		LessonID:    lessonID,
 		Title:       req.Title,
 		Description: req.Description,
@@ -30,8 +29,8 @@ func ToCreateAssignment(req dto.CreateAssignmentRequest, lessonID uuid.UUID) (*a
 	return a, nil
 }
 
-func ToAssignmentResponse(req assignment.Assignment) dto.AssignmentResponse {
-	resp := dto.AssignmentResponse{
+func ToAssignmentResponse(req Assignment) AssignmentResponse {
+	resp := AssignmentResponse{
 		ID:          req.ID.String(),
 		LessonID:    req.LessonID.String(),
 		Title:       req.Title,
@@ -48,13 +47,13 @@ func ToAssignmentResponse(req assignment.Assignment) dto.AssignmentResponse {
 	return resp
 }
 
-func ToStudentAssignmentResponse(req assignment.StudentAssignment) dto.StudentAssignmentResponse {
-	resp := dto.StudentAssignmentResponse{
+func ToStudentAssignmentResponse(req StudentAssignment) StudentAssignmentResponse {
+	resp := StudentAssignmentResponse{
 		AssignmentResponse: ToAssignmentResponse(req.Assignment),
 	}
 
 	if req.Submission != nil {
-		resp.Submission = &dto.SubmissionResponse{
+		resp.Submission = &SubmissionResponse{
 			Code:        req.Submission.Code,
 			Status:      req.Submission.Status,
 			Marks:       req.Submission.Marks,
@@ -66,8 +65,8 @@ func ToStudentAssignmentResponse(req assignment.StudentAssignment) dto.StudentAs
 	return resp
 }
 
-func ToBatchSubmissionResponse(req assignment.BatchSubmission) dto.BatchSubmissionResponse {
-	return dto.BatchSubmissionResponse{
+func ToBatchSubmissionResponse(req BatchSubmission) BatchSubmissionResponse {
+	return BatchSubmissionResponse{
 		ID:              req.ID.String(),
 		Code:            req.Code,
 		Remarks:         req.Remarks,

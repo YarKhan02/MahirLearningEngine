@@ -1,21 +1,19 @@
-package mapper
+package student
 
 import (
 	"fmt"
 	"time"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
 	"github.com/YarKhan02/MahirLearningEngine/internal/constant"
-	"github.com/YarKhan02/MahirLearningEngine/internal/domain/student"
 )
 
-func ToRegisterStudent(req dto.RegisterStudentRequest) (*student.Student, error) {
+func ToRegisterStudent(req RegisterStudentRequest) (*Student, error) {
 	dob, err := time.Parse(constant.DateLayout, req.DOB)
 	if err != nil {
 		return nil, fmt.Errorf("invalid dob: %w", err)
 	}
 
-	return &student.Student{
+	return &Student{
 		Email:       req.Email,
 		Username:    req.Username,
 		FullName:    req.FullName,
@@ -25,8 +23,8 @@ func ToRegisterStudent(req dto.RegisterStudentRequest) (*student.Student, error)
 	}, nil
 }
 
-func ToAdminStudentResponse(req student.StudentWithBatch) dto.AdminStudentResponse {
-	resp := dto.AdminStudentResponse{
+func ToAdminStudentResponse(req StudentWithBatch) AdminStudentResponse {
+	resp := AdminStudentResponse{
 		ID:          req.ID.String(),
 		FullName:    req.FullName,
 		Username:    req.Username,
@@ -48,8 +46,8 @@ func ToAdminStudentResponse(req student.StudentWithBatch) dto.AdminStudentRespon
 	return resp
 }
 
-func ToStudentCourseResponse(req student.StudentCourse) dto.StudentCourseResponse {
-	return dto.StudentCourseResponse{
+func ToStudentCourseResponse(req StudentCourse) StudentCourseResponse {
+	return StudentCourseResponse{
 		ID:               req.ID.String(),
 		Title:            req.Title,
 		Level:            req.Level,
@@ -60,8 +58,8 @@ func ToStudentCourseResponse(req student.StudentCourse) dto.StudentCourseRespons
 	}
 }
 
-func ToStudentLessonResponse(req student.StudentLesson) dto.StudentLessonResponse {
-	resp := dto.StudentLessonResponse{
+func ToStudentLessonResponse(req StudentLesson) StudentLessonResponse {
+	resp := StudentLessonResponse{
 		ID:          req.ID.String(),
 		Title:       req.Title,
 		Description: req.Description,

@@ -1,21 +1,20 @@
-package mapper
+package timetable
 
 import (
 	"fmt"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
 	"github.com/YarKhan02/MahirLearningEngine/internal/constant"
-	"github.com/YarKhan02/MahirLearningEngine/internal/domain/timetable"
+	
 	"github.com/google/uuid"
 )
 
-func ToCreateTimetable(batchID uuid.UUID, req dto.CreateTimetableRequest) (*timetable.Timetable, error) {
+func ToCreateTimetable(batchID uuid.UUID, req CreateTimetableRequest) (*Timetable, error) {
 	courseID, err := uuid.Parse(req.CourseID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid courseId: %w", err)
 	}
 
-	return &timetable.Timetable{
+	return &Timetable{
 		BatchID:   batchID,
 		CourseID:  courseID,
 		Weekdays:  req.Weekdays,
@@ -24,8 +23,8 @@ func ToCreateTimetable(batchID uuid.UUID, req dto.CreateTimetableRequest) (*time
 	}, nil
 }
 
-func ToTimetableResponse(t timetable.Timetable) dto.TimetableResponse {
-	return dto.TimetableResponse{
+func ToTimetableResponse(t Timetable) TimetableResponse {
+	return TimetableResponse{
 		ID:          t.ID.String(),
 		BatchID:     t.BatchID.String(),
 		CourseID:    t.CourseID.String(),
@@ -36,8 +35,8 @@ func ToTimetableResponse(t timetable.Timetable) dto.TimetableResponse {
 	}
 }
 
-func ToClassSessionResponse(s timetable.ClassSession) dto.ClassSessionResponse {
-	return dto.ClassSessionResponse{
+func ToClassSessionResponse(s ClassSession) ClassSessionResponse {
+	return ClassSessionResponse{
 		Date:        s.Date.Format(constant.DateLayout),
 		Weekday:     s.Weekday,
 		StartTime:   s.StartTime,

@@ -98,7 +98,21 @@ func run() error {
 	announcementSvc := announcement.NewService(announcementRepo)
 	tokenSvc := token.NewService(key, tokenRepo, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 
-	srv := apihttp.NewServer(cfg, userSvc, roleSvc, courseSvc, batchSvc, studentSvc, assignmentSvc, attendanceSvc, dashboardSvc, timetableSvc, announcementSvc, tokenSvc, redisClient)
+	srv := apihttp.NewServer(apihttp.ServerDeps{
+		Config:          cfg,
+		UserSvc:         userSvc,
+		RoleSvc:         roleSvc,
+		CourseSvc:       courseSvc,
+		BatchSvc:        batchSvc,
+		StudentSvc:      studentSvc,
+		AssignmentSvc:   assignmentSvc,
+		AttendanceSvc:   attendanceSvc,
+		DashboardSvc:    dashboardSvc,
+		TimetableSvc:    timetableSvc,
+		AnnouncementSvc: announcementSvc,
+		TokenSvc:        tokenSvc,
+		Redis:           redisClient,
+	})
 
 	log.Printf("listening on: %s", cfg.Addr)
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

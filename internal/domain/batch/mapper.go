@@ -1,16 +1,15 @@
-package mapper
+package batch
 
 import (
 	"fmt"
 	"time"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
 	"github.com/YarKhan02/MahirLearningEngine/internal/constant"
-	"github.com/YarKhan02/MahirLearningEngine/internal/domain/batch"
+	
 	"github.com/google/uuid"
 )
 
-func ToCreateBatch(req dto.CreateBatchRequest) (*batch.Batch, error) {
+func ToCreateBatch(req CreateBatchRequest) (*Batch, error) {
 	startDate, err := time.Parse(constant.DateLayout, req.StartDate)
 	if err != nil {
 		return nil, fmt.Errorf("invalid startDate: %w", err)
@@ -21,7 +20,7 @@ func ToCreateBatch(req dto.CreateBatchRequest) (*batch.Batch, error) {
 		return nil, fmt.Errorf("invalid endDate: %w", err)
 	}
 
-	return &batch.Batch{
+	return &Batch{
 		BatchName: req.BatchName,
 		StartDate: startDate,
 		EndDate:   endDate,
@@ -31,7 +30,7 @@ func ToCreateBatch(req dto.CreateBatchRequest) (*batch.Batch, error) {
 	}, nil
 }
 
-func ToUpdateBatch(id uuid.UUID, req dto.UpdateBatchRequest) (*batch.Batch, error) {
+func ToUpdateBatch(id uuid.UUID, req UpdateBatchRequest) (*Batch, error) {
 	startDate, err := time.Parse(constant.DateLayout, req.StartDate)
 	if err != nil {
 		return nil, fmt.Errorf("invalid startDate: %w", err)
@@ -42,7 +41,7 @@ func ToUpdateBatch(id uuid.UUID, req dto.UpdateBatchRequest) (*batch.Batch, erro
 		return nil, fmt.Errorf("invalid endDate: %w", err)
 	}
 
-	return &batch.Batch{
+	return &Batch{
 		ID:        id,
 		BatchName: req.BatchName,
 		StartDate: startDate,
@@ -53,8 +52,8 @@ func ToUpdateBatch(id uuid.UUID, req dto.UpdateBatchRequest) (*batch.Batch, erro
 	}, nil
 }
 
-func ToBatchResponse(req batch.Batch) dto.BatchResponse {
-	return dto.BatchResponse{
+func ToBatchResponse(req Batch) BatchResponse {
+	return BatchResponse{
 		ID: req.ID.String(),
 		BatchName: req.BatchName,
 		StartDate: req.StartDate.Format(constant.DateLayout),
@@ -64,8 +63,8 @@ func ToBatchResponse(req batch.Batch) dto.BatchResponse {
 		Price: req.Price,
 	}
 }
-func ToBatchCourseResponse(req batch.BatchCourse) dto.BatchCourseResponse {
-	return dto.BatchCourseResponse{
+func ToBatchCourseResponse(req BatchCourse) BatchCourseResponse {
+	return BatchCourseResponse{
 		ID:        req.ID.String(),
 		CourseID:  req.CourseID.String(),
 		Title:     req.Title,
@@ -74,13 +73,13 @@ func ToBatchCourseResponse(req batch.BatchCourse) dto.BatchCourseResponse {
 	}
 }
 
-func ToPublicBatchResponse(req batch.BatchWithCourses) dto.PublicBatchResponse {
-	courses := make([]dto.BatchCourseResponse, 0, len(req.Courses))
+func ToPublicBatchResponse(req BatchWithCourses) PublicBatchResponse {
+	courses := make([]BatchCourseResponse, 0, len(req.Courses))
 	for _, c := range req.Courses {
 		courses = append(courses, ToBatchCourseResponse(c))
 	}
 
-	return dto.PublicBatchResponse{
+	return PublicBatchResponse{
 		ID:        req.ID.String(),
 		BatchName: req.BatchName,
 		StartDate: req.StartDate.Format(constant.DateLayout),

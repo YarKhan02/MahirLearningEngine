@@ -25,10 +25,26 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service, courseSvc *course.Service, batchSvc *batch.Service, studentSvc *student.Service, assignmentSvc *assignment.Service, attendanceSvc *attendance.Service, dashboardSvc *dashboard.Service, timetableSvc *timetable.Service, announcementSvc *announcement.Service, tokenSvc *token.Service, redis *redis.RedisClient) *http.Server {
+type ServerDeps struct {
+    Config          *config.Config
+    UserSvc         *user.Service
+    RoleSvc         *role.Service
+    CourseSvc       *course.Service
+    BatchSvc        *batch.Service
+    StudentSvc      *student.Service
+    AssignmentSvc   *assignment.Service
+    AttendanceSvc   *attendance.Service
+    DashboardSvc    *dashboard.Service
+    TimetableSvc    *timetable.Service
+    AnnouncementSvc *announcement.Service
+    TokenSvc        *token.Service
+    Redis           *redis.RedisClient
+}
+
+func NewServer(deps ServerDeps) *http.Server {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{cfg.AllowedOrigin, "https://www.mahircodelab.com"},
+		AllowOrigins:     []string{deps.Config.AllowedOrigin, "https://www.mahircodelab.com"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Authorization", "Content-Type"},
 		AllowCredentials: true,
@@ -36,16 +52,15 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 
 	// Secure cookies (SameSite=None) only work over HTTPS; in local HTTP dev we
 	// must fall back to a plain SameSite=Lax cookie or the browser drops it.
-	secureCookies := !strings.EqualFold(cfg.Env, "development")
-	userHandler := handler.NewAuthHandler(userSvc, studentSvc, tokenSvc, secureCookies)
-	courseHandler := handler.NewCourseHandler(courseSvc)
-	batchHandler := handler.NewBatchHandler(batchSvc)
-	studentHandler := handler.NewStudentHandler(studentSvc, userSvc, cfg.TempPassword)
-	assignmentHandler := handler.NewAssignmentHandler(assignmentSvc)
-	attendanceHandler := handler.NewAttendanceHandler(attendanceSvc)
-	dashboardHandler := handler.NewDashboardHandler(dashboardSvc)
-	timetableHandler := handler.NewTimetableHandler(timetableSvc)
-	announcementHandler := handler.NewAnnouncementHandler(announcementSvc)
+	secureCookies := !strings.EqualFold(deps.Config.Env, "development")
+	userHandler := handler.NewAuthHandler(deps.UserSvc, deps.StudentSvc, deps.TokenSvc, secureCookies)
+	courseHandler := course.NewHandler(deps.CourseSvc)
+	batchHandler := batch.NewHandler(deps.BatchSvc)
+	studentHandler := student.NewHandler(deps.StudentSvc, deps.UserSvc, deps.Config.TempPassword)
+	assignmentHandler := assignment.NewHandler(deps.AssignmentSvc)
+	attendanceHandler := attendance.NewHandler(deps.AttendanceSvc)
+	dashboardHandler := dashboard.NewHandler(deps.DashboardSvc)
+	timetableHandler := timetable.NewHandler(deps.TimetableSvc)
 
 	// Liveness probe for the deploy pipeline / Render health checks.
 	r.GET("/health", func(c *gin.Context) {
@@ -68,12 +83,11 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	}
 
 	// course/admin/
-	course := r.Group("/course", middleware.Auth(tokenSvc, redis))
+	course := r.Group("/course", middleware.Auth(deps.TokenSvc, deps.Redis))
+	
+	// admin
 	admin := course.Group("/admin")
-	admin.Use(
-		middleware.Auth(tokenSvc, redis),
-		middleware.RequireRole("admin"),
-	)
+	admin.Use(middleware.RequireRole("admin"))
 	{
 		admin.POST("", courseHandler.InsertCourse)
 		admin.GET("", courseHandler.GetCourse)
@@ -89,8 +103,15 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 		admin.PATCH("/submissions/:submissionId/grade", assignmentHandler.GradeSubmission)
 	}
 
+	// student-facing course access (My Courses / lessons / progress)
+	courseStudent := course.Group("/student", middleware.RequireRole("student"))
+	{
+		courseStudent.GET("", studentHandler.GetMyCourses)
+		courseStudent.GET("/:courseId/lessons", studentHandler.GetMyLessons)
+	}
+
 	// student
-	studentGroup := r.Group("/student", middleware.Auth(tokenSvc, redis))
+	studentGroup := r.Group("/student", middleware.Auth(deps.TokenSvc, deps.Redis))
 	
 	// student/admin
 	studentAdmin := studentGroup.Group("/admin", middleware.RequireRole("admin"),)
@@ -100,13 +121,6 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 		studentAdmin.PATCH("/:studentId/status", studentHandler.UpdateStudentStatus)
 		studentAdmin.PATCH("/:studentId/batch", studentHandler.UpdateStudentBatch)
 		studentAdmin.POST("/:studentId/account", studentHandler.CreateStudentAccount)
-	}
-
-	// student-facing course access (My Courses / lessons / progress)
-	courseStudent := course.Group("/student", middleware.RequireRole("student"))
-	{
-		courseStudent.GET("", studentHandler.GetMyCourses)
-		courseStudent.GET("/:courseId/lessons", studentHandler.GetMyLessons)
 	}
 
 	studentPortal := studentGroup.Group("/portal", middleware.RequireRole("student"))
@@ -119,10 +133,10 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	}
 
 	// batch/admin
-	batch := r.Group("/batch", middleware.Auth(tokenSvc, redis))
+	batch := r.Group("/batch", middleware.Auth(deps.TokenSvc, deps.Redis))
 	admin = batch.Group("/admin")
 	admin.Use(
-		middleware.Auth(tokenSvc, redis),
+		middleware.Auth(deps.TokenSvc, deps.Redis),
 		middleware.RequireRole("admin"),
 	)
 	{
@@ -138,7 +152,7 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 	}
 
 	// attendance
-	attendanceGroup := r.Group("/attendance", middleware.Auth(tokenSvc, redis))
+	attendanceGroup := r.Group("/attendance", middleware.Auth(deps.TokenSvc, deps.Redis))
 	
 	// attendance/admin
 	attendanceAdmin := attendanceGroup.Group("/admin", middleware.RequireRole("admin"))
@@ -154,29 +168,14 @@ func NewServer(cfg *config.Config, userSvc *user.Service, roleSvc *role.Service,
 		attendancePortal.GET("/me", attendanceHandler.GetMyRecords)
 	}
 
-	dashboardGroup := r.Group("/dashboard", middleware.Auth(tokenSvc, redis))
+	dashboardGroup := r.Group("/dashboard", middleware.Auth(deps.TokenSvc, deps.Redis))
 	dashboardAdmin := dashboardGroup.Group("/admin", middleware.RequireRole("admin"))
 	{
 		dashboardAdmin.GET("", dashboardHandler.GetAdminDashboard)
 	}
 
-	// announcements
-	announcementGroup := r.Group("/announcement", middleware.Auth(tokenSvc, redis))
-
-	announcementAdmin := announcementGroup.Group("/admin", middleware.RequireRole("admin"))
-	{
-		announcementAdmin.POST("", announcementHandler.CreateAnnouncement)
-		announcementAdmin.GET("", announcementHandler.GetAnnouncements)
-		announcementAdmin.DELETE("/:announcementId", announcementHandler.DeleteAnnouncement)
-	}
-
-	announcementPortal := announcementGroup.Group("/portal", middleware.RequireRole("student"))
-	{
-		announcementPortal.GET("", announcementHandler.GetMyAnnouncements)
-	}
-
 	return &http.Server{
-		Addr: 				cfg.Addr,
+		Addr: 				deps.Config.Addr,
 		Handler: 			r,
 		ReadHeaderTimeout: 	5 * time.Second,
 	}

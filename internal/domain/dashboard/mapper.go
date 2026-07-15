@@ -1,26 +1,24 @@
-package mapper
+package dashboard
 
 import (
 	"time"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
 	"github.com/YarKhan02/MahirLearningEngine/internal/constant"
-	"github.com/YarKhan02/MahirLearningEngine/internal/domain/dashboard"
 )
 
-func ToAdminDashboardResponse(d *dashboard.AdminDashboard) dto.AdminDashboardResponse {
-	resp := dto.AdminDashboardResponse{
+func ToAdminDashboardResponse(d *AdminDashboard) AdminDashboardResponse {
+	resp := AdminDashboardResponse{
 		TotalStudents:      d.Counts.TotalStudents,
 		ActiveStudents:     d.Counts.ActiveStudents,
 		PendingStudents:    d.Counts.PendingStudents,
 		PendingSubmissions: d.Counts.PendingSubmissions,
-		RecentSubmissions:  make([]dto.DashboardSubmission, 0, len(d.RecentSubmissions)),
-		UpcomingBatches:    make([]dto.DashboardUpcomingBatch, 0, len(d.UpcomingBatches)),
-		RecentStudents:     make([]dto.DashboardStudent, 0, len(d.RecentStudents)),
+		RecentSubmissions:  make([]DashboardSubmission, 0, len(d.RecentSubmissions)),
+		UpcomingBatches:    make([]DashboardUpcomingBatch, 0, len(d.UpcomingBatches)),
+		RecentStudents:     make([]DashboardStudent, 0, len(d.RecentStudents)),
 	}
 
 	for _, s := range d.RecentSubmissions {
-		resp.RecentSubmissions = append(resp.RecentSubmissions, dto.DashboardSubmission{
+		resp.RecentSubmissions = append(resp.RecentSubmissions, DashboardSubmission{
 			ID:              s.ID.String(),
 			StudentName:     s.StudentName,
 			AssignmentTitle: s.AssignmentTitle,
@@ -31,7 +29,7 @@ func ToAdminDashboardResponse(d *dashboard.AdminDashboard) dto.AdminDashboardRes
 	}
 
 	for _, b := range d.UpcomingBatches {
-		resp.UpcomingBatches = append(resp.UpcomingBatches, dto.DashboardUpcomingBatch{
+		resp.UpcomingBatches = append(resp.UpcomingBatches, DashboardUpcomingBatch{
 			ID:        b.ID.String(),
 			BatchName: b.BatchName,
 			StartDate: b.StartDate.Format(constant.DateLayout),
@@ -42,7 +40,7 @@ func ToAdminDashboardResponse(d *dashboard.AdminDashboard) dto.AdminDashboardRes
 	}
 
 	for _, s := range d.RecentStudents {
-		st := dto.DashboardStudent{
+		st := DashboardStudent{
 			ID:        s.ID.String(),
 			FullName:  s.FullName,
 			Email:     s.Email,

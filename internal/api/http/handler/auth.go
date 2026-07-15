@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/response"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/student"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
@@ -51,12 +52,12 @@ func (h *AuthHandler) RegisterAdmin(c *gin.Context) {
 	
 	var req dto.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		writeError(c, http.StatusBadRequest, "invalid request payload")
+		response.WriteError(c, http.StatusBadRequest, "invalid request payload")
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		writeError(c, http.StatusUnprocessableEntity, err.Error())
+		response.WriteError(c, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 
@@ -64,25 +65,25 @@ func (h *AuthHandler) RegisterAdmin(c *gin.Context) {
 	if err != nil {
 		switch err {
 		case user.ErrEmailTaken:
-			writeError(c, http.StatusConflict, "email already registered")
+			response.WriteError(c, http.StatusConflict, "email already registered")
 		default:
-			writeError(c, http.StatusInternalServerError, "registration failed")
+			response.WriteError(c, http.StatusInternalServerError, "registration failed")
 		}
 		return
 	}
 
-	writeJSON(c, http.StatusCreated, dto.UserResponse{ID: u.ID, Email: u.Email, Role: u.Role})
+	response.WriteJSON(c, http.StatusCreated, dto.UserResponse{ID: u.ID, Email: u.Email, Role: u.Role})
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
 
 	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		writeError(c, http.StatusBadRequest, "invalid request payload")
+		response.WriteError(c, http.StatusBadRequest, "invalid request payload")
 		return
 	}
 	if err := req.Validate(); err != nil {
-		writeError(c, http.StatusUnprocessableEntity, err.Error())
+		response.WriteError(c, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 
@@ -90,19 +91,19 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err != nil {
 		switch err {
 		case user.ErrAccountLocked:
-			writeError(c, http.StatusLocked, "account temporarily locked")
+			response.WriteError(c, http.StatusLocked, "account temporarily locked")
 		case user.ErrAccountBanned:
-			writeError(c, http.StatusForbidden, "account banned")
+			response.WriteError(c, http.StatusForbidden, "account banned")
 		default:
 			// always same message — don't leak which field is wrong
-			writeError(c, http.StatusUnauthorized, "invalid credentials")
+			response.WriteError(c, http.StatusUnauthorized, "invalid credentials")
 		}
 		return
 	}
 
 	accessToken, err := h.tokenSvc.IssueAccessToken(u)
 	if err != nil {
-		writeError(c, http.StatusInternalServerError, "failed to issue access token")
+		response.WriteError(c, http.StatusInternalServerError, "failed to issue access token")
 		return
 	}
 
@@ -113,7 +114,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	
 	refreshToken, err := h.tokenSvc.IssueRefreshToken(c, u, ip, c.Request.UserAgent())
 	if err != nil {
-		writeError(c, http.StatusInternalServerError, "failed to issue refresh token")
+		response.WriteError(c, http.StatusInternalServerError, "failed to issue refresh token")
 		return
 	}
 
@@ -137,7 +138,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		}
 	}
 
-	writeJSON(c, http.StatusOK, dto.LoginResponse{
+	response.WriteJSON(c, http.StatusOK, dto.LoginResponse{
 		AccessToken: accessToken,
 		User:        authUser,
 	})
@@ -147,31 +148,31 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	
 	cookie, err := c.Request.Cookie("refresh_token")
 	if err != nil {
-		writeError(c, http.StatusUnauthorized, "missing refresh token")
+		response.WriteError(c, http.StatusUnauthorized, "missing refresh token")
 		return
 	}
 
 	rt, newRawToken, err := h.tokenSvc.RotateRefreshToken(c.Request.Context(), cookie.Value)
 	if err != nil {
-		writeError(c, http.StatusUnauthorized, "invalid or expired refresh token")
+		response.WriteError(c, http.StatusUnauthorized, "invalid or expired refresh token")
 		return
 	}
 
 	u, err := h.userSvc.FindByID(c.Request.Context(), rt.UserID)
 	if err != nil {
-		writeError(c, http.StatusUnauthorized, "invalid refresh token")
+		response.WriteError(c, http.StatusUnauthorized, "invalid refresh token")
 		return
 	}
 
 	accessToken, err := h.tokenSvc.IssueAccessToken(u)
 	if err != nil {
-		writeError(c, http.StatusInternalServerError, "failed to issue access token")
+		response.WriteError(c, http.StatusInternalServerError, "failed to issue access token")
 		return
 	}
 
 	h.setRefreshCookie(c, newRawToken, refreshCookieMaxAge)
 
-	writeJSON(c, http.StatusOK, dto.TokenResponse{
+	response.WriteJSON(c, http.StatusOK, dto.TokenResponse{
 		AccessToken: accessToken,
 		ExpiresIn:   900,
 	})
@@ -185,7 +186,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 	h.setRefreshCookie(c, "", -1)
 
-	writeJSON(c, http.StatusOK, gin.H{
+	response.WriteJSON(c, http.StatusOK, gin.H{
 		"message": "logged out successfully",
 	})
 }
