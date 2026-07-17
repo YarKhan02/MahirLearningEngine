@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/common"
 	"github.com/google/uuid"
 )
 
@@ -42,6 +43,18 @@ func (s *Service) GetProfileByUserID(ctx context.Context, userID uuid.UUID) (*St
 		return nil, err
 	}
 	return s.repo.GetStudentByID(ctx, studentID)
+}
+
+func (s *Service) GetStudentProfile(ctx context.Context, userID uuid.UUID) (*common.StudentProfile, error) {
+	student, err := s.GetProfileByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &common.StudentProfile{
+		FullName: student.FullName,
+		Email:    student.Email,
+		Username: student.Username,
+	}, nil
 }
 
 func (s *Service) UpdateStudentStatus(ctx context.Context, id uuid.UUID, status string) error {

@@ -38,6 +38,10 @@ func (s *Service) GetAll(ctx context.Context) ([]Announcement, error) {
 	return s.repo.GetAll(ctx)
 }
 
+func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*Announcement, error) {
+	return s.repo.GetByID(ctx, id)
+}
+
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	return s.repo.Delete(ctx, id)
 }

@@ -8,25 +8,30 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
-	apihttp "github.com/YarKhan02/MahirLearningEngine/internal/api/http"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api"
 	"github.com/YarKhan02/MahirLearningEngine/internal/config"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/announcement"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/assignment"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/attendance"
-	"github.com/YarKhan02/MahirLearningEngine/internal/domain/announcement"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/batch"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/course"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/dashboard"
-	"github.com/YarKhan02/MahirLearningEngine/internal/domain/role"
+
+	// "github.com/YarKhan02/MahirLearningEngine/internal/domain/role"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/student"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/timetable"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/crypto"
+	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/logging"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/postgres/migrations"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/postgres/repository"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
+
+	"go.uber.org/zap"
 )
 
 // main only reports the error — all setup lives in run so deferred
@@ -42,6 +47,17 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
+
+	logger, err := logging.New(logging.Config{
+		Env: cfg.Env,
+		ServiceName: "mahirlearning",
+		Version: "1",
+		LogFilePath: "/Users/yarkhan/Tech/MahirLearning/MahirLearningEngine/logs/app.log",
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer logger.Sync() // flushes buffered log entries on shutdown
 
 	db, err := sql.Open("pgx", cfg.DatabaseURL)
 	if err != nil {
@@ -74,6 +90,10 @@ func run() error {
 		}
 	}
 
+	// Secure cookies (SameSite=None) only work over HTTPS; in local HTTP dev we
+	// must fall back to a plain SameSite=Lax cookie or the browser drops it.
+	secureCookies := !strings.EqualFold(cfg.Env, "development")
+
 	userRepo := repository.NewUserRepository(db)
 	courseRepo := repository.NewCourseRepository(db)
 	batchRepo := repository.NewBatchRepository(db)
@@ -83,25 +103,40 @@ func run() error {
 	attendanceRepo := repository.NewAttendanceRepository(db)
 	dashboardRepo := repository.NewDashboardRepository(db)
 	timetableRepo := repository.NewTimetableRepository(db)
-	announcementRepo := repository.NewAnnouncementRepository(db)
 	tokenRepo := repository.NewTokenRepository(db)
+
+	announcementRepo := repository.NewAnnouncementRepository(db)
+	announcementCache := announcement.NewCachedRepository(announcementRepo, redisClient)
+	announcementSvc := announcement.NewService(announcementCache)
 
 	userSvc := user.NewService(userRepo, roleRepo)
 	courseSvc := course.NewService(courseRepo)
 	batchSvc := batch.NewService(batchRepo)
-	roleSvc := role.NewService(roleRepo)
+	// roleSvc := role.NewService(roleRepo)
 	studentSvc := student.NewService(studentRepo)
 	assignmentSvc := assignment.NewService(assignmentRepo)
 	attendanceSvc := attendance.NewService(attendanceRepo)
 	dashboardSvc := dashboard.NewService(dashboardRepo)
 	timetableSvc := timetable.NewService(timetableRepo)
-	announcementSvc := announcement.NewService(announcementRepo)
 	tokenSvc := token.NewService(key, tokenRepo, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 
-	srv := apihttp.NewServer(cfg, userSvc, roleSvc, courseSvc, batchSvc, studentSvc, assignmentSvc, attendanceSvc, dashboardSvc, timetableSvc, announcementSvc, tokenSvc, redisClient)
+	module := []api.Module{
+		user.NewModule(userSvc, studentSvc, tokenSvc, redisClient, secureCookies),
+		course.NewModule(courseSvc, tokenSvc, redisClient),
+		batch.NewModule(batchSvc, tokenSvc, redisClient),
+		student.NewModule(studentSvc, userSvc, tokenSvc, redisClient, cfg.TempPassword),
+		assignment.NewModule(assignmentSvc, tokenSvc, redisClient),
+		attendance.NewModule(attendanceSvc, tokenSvc, redisClient),
+		dashboard.NewModule(dashboardSvc, tokenSvc, redisClient),
+		timetable.NewModule(timetableSvc, tokenSvc, redisClient),
+		announcement.NewModule(announcementSvc, tokenSvc, redisClient),
+	}
 
-	log.Printf("listening on: %s", cfg.Addr)
+	srv := api.NewServer(cfg.AllowedOrigin, cfg.Addr, module, logger, cfg.RateLimitRequests, cfg.RateLimitWindow)
+
+	logger.Info("server starting", zap.String("event", "server_start"), zap.String("addr", cfg.Addr))
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		logger.Error("server stopped unexpectedly", zap.String("event", "server_error"), zap.Error(err))
 		return fmt.Errorf("server error: %w", err)
 	}
 
