@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/response"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/response"
 	
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -30,7 +30,7 @@ func (h *Handler) InsertCourse(c *gin.Context) {
 
 	createdCourse, err := h.courseSvc.InsertCourse(c.Request.Context(), course)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, "course insertion failed")
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -41,7 +41,7 @@ func (h *Handler) GetCourse(c *gin.Context) {
 	
 	courses, err := h.courseSvc.GetCourse(c.Request.Context())
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, "course fetch failed")
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -67,7 +67,7 @@ func (h *Handler) DeleteCourse(c *gin.Context) {
 			response.WriteError(c, http.StatusNotFound, "course not found")
 			return
 		}
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -115,7 +115,7 @@ func (h *Handler) GetLesson(c *gin.Context) {
 
 	lessons, err := h.courseSvc.GetLesson(c.Request.Context(), courseIDU)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, "lesson fetch failed")
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -156,7 +156,7 @@ func (h *Handler) UpdateLesson(c *gin.Context) {
 
 	err = h.courseSvc.UpdateLesson(c.Request.Context(), lesson)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -181,7 +181,7 @@ func (h *Handler) ReorderLesson(c *gin.Context) {
 
 	err = h.courseSvc.ReorderLesson(c.Request.Context(), lessonIDU, req.OrderNo)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 

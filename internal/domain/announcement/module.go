@@ -1,7 +1,7 @@
 package announcement
 
 import (
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/middleware"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
 
@@ -14,22 +14,26 @@ type Module struct {
     redis       *redis.RedisClient
 }
 
-func NewModule(svc *Service) *Module {
-    return &Module{handler: NewHandler(svc)}
+func NewModule(svc *Service, tokenSvc *token.Service, redis *redis.RedisClient) *Module {
+    return &Module{
+		handler: 	NewHandler(svc),
+		tokenSvc: 	tokenSvc,
+		redis: 		redis,
+	}
 }
 
-func (m *Module) RegisterRoutes(r *gin.RouterGroup) {
+func (m *Module) RegisterRoutes(r *gin.Engine) {
     group := r.Group("/announcement", middleware.Auth(m.tokenSvc, m.redis))
 
-	admin := group.Group("/admin", middleware.RequireRole("admin"))
+	admin := group.Group("/a", middleware.RequireRole("admin"))
 	{
 		admin.POST("", m.handler.CreateAnnouncement)
 		admin.GET("", m.handler.GetAnnouncements)
 		admin.DELETE("/:announcementId", m.handler.DeleteAnnouncement)
 	}
 
-	portal := group.Group("/portal", middleware.RequireRole("student"))
+	student := group.Group("/s", middleware.RequireRole("student"))
 	{
-		portal.GET("", m.handler.GetMyAnnouncements)
+		student.GET("", m.handler.GetMyAnnouncements)
 	}
 }

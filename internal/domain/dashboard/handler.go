@@ -3,7 +3,7 @@ package dashboard
 import (
 	"net/http"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/response"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/response"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,7 +19,7 @@ func (h *Handler) GetAdminDashboard(c *gin.Context) {
 
 	d, err := h.svc.GetAdminDashboard(c.Request.Context())
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 

@@ -1,0 +1,214 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_LOKI",
+      "label": "Loki",
+      "description": "Loki datasource holding the MahirLearning app logs",
+      "type": "datasource",
+      "pluginId": "loki",
+      "pluginName": "Loki"
+    }
+  ],
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["mahirlearning", "backend", "security"],
+  "title": "MahirLearning — Backend & Security",
+  "templating": {
+    "list": [
+      {
+        "name": "DS_LOKI",
+        "type": "datasource",
+        "query": "loki",
+        "label": "Loki",
+        "hide": 0,
+        "current": {},
+        "refresh": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Requests / sec (5m)",
+      "gridPos": { "h": 4, "w": 5, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 2 }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "sum(rate({job=\"mahirlearning\"} | json | event=\"http_request\" [5m]))", "queryType": "instant" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "5xx error ratio (5m)",
+      "gridPos": { "h": 4, "w": 5, "x": 5, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.01 }, { "color": "red", "value": 0.05 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "sum(rate({job=\"mahirlearning\"} | json | event=\"http_request\" | status>=500 [5m])) / sum(rate({job=\"mahirlearning\"} | json | event=\"http_request\" [5m]))", "queryType": "instant" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Auth failures (5m)",
+      "gridPos": { "h": 4, "w": 5, "x": 10, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 20 }, { "color": "red", "value": 100 } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "sum(count_over_time({job=\"mahirlearning\"} | json | event=\"auth_failure\" [5m]))", "queryType": "instant" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Rate-limit hits (5m)",
+      "gridPos": { "h": 4, "w": 5, "x": 15, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "sum(count_over_time({job=\"mahirlearning\"} | json | event=\"rate_limit_exceeded\" [5m]))", "queryType": "instant" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Account lockouts (24h)",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "sum(count_over_time({job=\"mahirlearning\"} | json | event=\"account_locked\" [24h]))", "queryType": "instant" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Request rate by status",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 20, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "sum by (status) (rate({job=\"mahirlearning\"} | json | event=\"http_request\" [$__interval]))", "queryType": "range", "legendFormat": "{{status}}" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "5xx error rate",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 30 }, "color": { "mode": "fixed", "fixedColor": "red" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "sum(rate({job=\"mahirlearning\"} | json | event=\"http_request\" | status>=500 [$__interval]))", "queryType": "range", "legendFormat": "5xx" }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Request latency (ms)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "fieldConfig": { "defaults": { "unit": "ms", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "quantile_over_time(0.50, {job=\"mahirlearning\"} | json | event=\"http_request\" | unwrap latency_ms [$__interval])", "queryType": "range", "legendFormat": "p50" },
+        { "refId": "B", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "quantile_over_time(0.95, {job=\"mahirlearning\"} | json | event=\"http_request\" | unwrap latency_ms [$__interval])", "queryType": "range", "legendFormat": "p95" },
+        { "refId": "C", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "quantile_over_time(0.99, {job=\"mahirlearning\"} | json | event=\"http_request\" | unwrap latency_ms [$__interval])", "queryType": "range", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Auth failures by reason",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 20, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "sum by (reason) (count_over_time({job=\"mahirlearning\"} | json | event=\"auth_failure\" [$__interval]))", "queryType": "range", "legendFormat": "{{reason}}" }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Failed logins by reason",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "sum by (reason) (count_over_time({job=\"mahirlearning\"} | json | event=\"login_failed\" [$__interval]))", "queryType": "range", "legendFormat": "{{reason}}" }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Rate-limit hits by client IP",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "sum by (client_ip) (count_over_time({job=\"mahirlearning\"} | json | event=\"rate_limit_exceeded\" [$__interval]))", "queryType": "range", "legendFormat": "{{client_ip}}" }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Top source IPs — failed logins (1h)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "options": { "showHeader": true },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "topk(15, sum by (client_ip) (count_over_time({job=\"mahirlearning\"} | json | event=\"login_failed\" [1h])))", "queryType": "instant" }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Top attempted identifiers — failed logins (1h)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "options": { "showHeader": true },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "topk(15, sum by (identifier) (count_over_time({job=\"mahirlearning\"} | json | event=\"login_failed\" [1h])))", "queryType": "instant" }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "logs",
+      "title": "Recent errors",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 36 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "{job=\"mahirlearning\"} | json | level=\"error\"", "queryType": "range" }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "logs",
+      "title": "Recent security events",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 36 },
+      "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "loki", "uid": "${DS_LOKI}" }, "expr": "{job=\"mahirlearning\"} | json | event=~\"auth_failure|login_failed|account_locked|rate_limit_exceeded|forbidden|panic\"", "queryType": "range" }
+      ]
+    }
+  ]
+}

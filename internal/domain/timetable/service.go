@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	ErrNoWeekdays    = errors.New("select at least one weekday")
-	ErrInvalidTime   = errors.New("start and end time are required")
-	ErrTimeOrder     = errors.New("end time must be after start time")
-	ErrTimetableNotFound = errors.New("timetable not found")
+	ErrNoWeekdays    		= errors.New("select at least one weekday")
+	ErrInvalidTime   		= errors.New("start and end time are required")
+	ErrTimeOrder     		= errors.New("end time must be after start time")
+	ErrTimetableNotFound 	= errors.New("timetable not found")
 )
 
 // upcomingWindowDays is how far ahead a student sees classes — the next week.

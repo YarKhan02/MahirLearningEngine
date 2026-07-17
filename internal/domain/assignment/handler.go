@@ -3,8 +3,8 @@ package assignment
 import (
 	"net/http"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/response"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/middleware"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/response"
 	
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -39,7 +39,7 @@ func (h *Handler) CreateAssignment(c *gin.Context) {
 	}
 
 	if err := h.svc.CreateAssignment(c.Request.Context(), a); err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -56,7 +56,7 @@ func (h *Handler) GetLessonAssignments(c *gin.Context) {
 
 	assignments, err := h.svc.GetLessonAssignments(c.Request.Context(), lessonIDU)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -77,7 +77,7 @@ func (h *Handler) DeleteAssignment(c *gin.Context) {
 	}
 
 	if err := h.svc.DeleteAssignment(c.Request.Context(), assignmentIDU); err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -150,7 +150,7 @@ func (h *Handler) GetBatchSubmissions(c *gin.Context) {
 
 	submissions, err := h.svc.GetBatchSubmissions(c.Request.Context(), batchIDU)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -177,7 +177,7 @@ func (h *Handler) GradeSubmission(c *gin.Context) {
 	}
 
 	if err := h.svc.GradeSubmission(c.Request.Context(), submissionIDU, *req.Marks, req.Remarks); err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 

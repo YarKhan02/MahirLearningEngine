@@ -1,15 +1,38 @@
 package attendance
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/middleware"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
+	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
+	"github.com/gin-gonic/gin"
+)
 
 type Module struct {
-    handler *Handler
+    handler     *Handler
+    tokenSvc    *token.Service
+    redis       *redis.RedisClient
 }
 
-func NewModule(svc *Service) *Module {
-    return &Module{handler: NewHandler(svc)}
+func NewModule(svc *Service, tokenSvc *token.Service, redis *redis.RedisClient) *Module {
+    return &Module{
+        handler: NewHandler(svc),
+		tokenSvc: 	tokenSvc,
+		redis: 		redis,
+    }
 }
 
-func (m *Module) RegisterRoutes(r *gin.RouterGroup) {
-    // same body as before
+func (m *Module) RegisterRoutes(r *gin.Engine) {
+    group := r.Group("/attendance", middleware.Auth(m.tokenSvc, m.redis))
+	
+	admin := group.Group("/admin", middleware.RequireRole("admin"))
+	{
+        admin.GET("/batch/:batchId", m.handler.GetRoster)
+		admin.GET("/:studentId", m.handler.GetStudentRecords)
+		admin.POST("/:batchId/mark", m.handler.Mark)
+	}
+	
+	student := group.Group("/s", middleware.RequireRole("student"))
+	{
+		student.GET("/me", m.handler.GetMyRecords)
+	}
 }

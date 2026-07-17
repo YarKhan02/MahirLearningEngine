@@ -16,6 +16,9 @@ var userCreateSQL string
 //go:embed sql/user_find_by_email_exists.sql
 var userFindByEmailExistsSQL string
 
+//go:embed sql/user_find_by_id_exists.sql
+var userFindByIDExistsSQL string
+
 //go:embed sql/user_find_by_email.sql
 var userFindByEmailSQL string
 
@@ -31,8 +34,11 @@ var userFindByIDSQL string
 //go:embed sql/user_update_failed_attempts.sql
 var userUpdateFailedAttemptsSQL string
 
+//go:embed sql/user_reset_password.sql
+var userResetPasswordSQL string
+
 type UserRepository struct {
-	db	*sql.DB
+	db *sql.DB
 }
 
 func NewUserRepository(db *sql.DB) *UserRepository {
@@ -115,6 +121,18 @@ func (r *UserRepository) FindByEmailExists(ctx context.Context, email string) (b
 	return exists, nil
 }
 
+func (r *UserRepository) FindByIDExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	var exists bool
+
+	err := r.db.QueryRowContext(ctx, userFindByIDExistsSQL, id).Scan(&exists)
+
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*user.User, error) {
 	var u user.User
 	var emailVal sql.NullString
@@ -173,4 +191,21 @@ func (r *UserRepository) UpdateFailedAttempts(ctx context.Context, id uuid.UUID,
 
 	_, err := r.db.ExecContext(ctx, userUpdateFailedAttemptsSQL, id, attempts, lock)
 	return err
+}
+
+func (r *UserRepository) ResetPassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
+	res, err := r.db.ExecContext(ctx, userResetPasswordSQL, passwordHash, id)
+	if err != nil {
+		return err
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return user.ErrUserNotFound
+	}
+
+	return nil
 }

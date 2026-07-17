@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/response"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/middleware"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/response"
 	"github.com/YarKhan02/MahirLearningEngine/internal/helper"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -29,13 +29,13 @@ func (h *Handler) CreateBatch(c *gin.Context) {
 
 	batch, err := ToCreateBatch(req)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, "invalid")
+		response.WriteError(c, http.StatusBadRequest, "invalid")
 		return
 	}
 
 	err = h.svc.CreateBatch(c.Request.Context(), batch)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -68,7 +68,7 @@ func (h *Handler) UpdateBatch(c *gin.Context) {
 			response.WriteError(c, http.StatusNotFound, "batch not found")
 			return
 		}
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -89,7 +89,7 @@ func (h *Handler) DeleteBatch(c *gin.Context) {
 			response.WriteError(c, http.StatusNotFound, "batch not found")
 			return
 		}
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -100,7 +100,7 @@ func (h *Handler) GetBatches(c *gin.Context) {
 
 	batches, err := h.svc.GetBatches(c.Request.Context())
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -121,7 +121,7 @@ func (h *Handler) GetBatchCourses(c *gin.Context) {
 
 	courses, err := h.svc.GetBatchCourses(c.Request.Context(), batchIDU)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -166,7 +166,7 @@ func (h *Handler) UpdateBatchCourses(c *gin.Context) {
 
 	err = h.svc.UpdateBatchCourses(c.Request.Context(), batchIDU, add, remove, grantedBy)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -177,7 +177,7 @@ func (h *Handler) GetPublicBatches(c *gin.Context) {
 
 	batches, err := h.svc.GetOpenBatchesWithCourses(c.Request.Context())
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 

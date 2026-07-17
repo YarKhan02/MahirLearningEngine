@@ -4,9 +4,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/response"
-	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/middleware"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/response"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/common"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/crypto"
 
 	"github.com/gin-gonic/gin"
@@ -14,16 +14,16 @@ import (
 )
 
 type Handler struct {
-	studentSvc 		*Service
-	userSvc    		*user.Service
-	tempPassword 	string
+	studentSvc   *Service
+	userSvc      common.StudentAccountRegistrar
+	tempPassword string
 }
 
-func NewHandler(studentSvc *Service, userSvc *user.Service, tempPassword string) *Handler {
+func NewHandler(studentSvc *Service, userSvc common.StudentAccountRegistrar, tempPassword string) *Handler {
 	return &Handler{
-		studentSvc: 	studentSvc, 
-		userSvc: 		userSvc,
-		tempPassword: 	tempPassword,
+		studentSvc:   studentSvc,
+		userSvc:      userSvc,
+		tempPassword: tempPassword,
 	}
 }
 
@@ -53,7 +53,7 @@ func (h *Handler) RegisterStudent(c *gin.Context) {
 			response.WriteError(c, http.StatusConflict, "this username is already taken")
 			return
 		}
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -64,7 +64,7 @@ func (h *Handler) GetStudents(c *gin.Context) {
 
 	students, err := h.studentSvc.GetStudents(c.Request.Context(), c.Query("q"))
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -91,7 +91,7 @@ func (h *Handler) UpdateStudentStatus(c *gin.Context) {
 	}
 
 	if err := h.studentSvc.UpdateStudentStatus(c.Request.Context(), studentIDU, req.Status); err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -123,7 +123,7 @@ func (h *Handler) UpdateStudentBatch(c *gin.Context) {
 	}
 
 	if err := h.studentSvc.UpdateStudentBatch(c.Request.Context(), studentIDU, batchID); err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -144,22 +144,22 @@ func (h *Handler) CreateStudentAccount(c *gin.Context) {
 			response.WriteError(c, http.StatusNotFound, "student not found")
 			return
 		}
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
 	password, err := crypto.GenerateTempPassword(h.tempPassword, 10)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, "failed to generate password")
+		response.WriteInternal(c, err)
 		return
 	}
 
-	if _, err := h.userSvc.RegisterStudentAccount(c.Request.Context(), s.Username, password); err != nil {
-		if errors.Is(err, user.ErrUsernameTaken) {
+	if err := h.userSvc.RegisterStudentAccount(c.Request.Context(), s.Username, password); err != nil {
+		if errors.Is(err, common.ErrUsernameTaken) {
 			response.WriteError(c, http.StatusConflict, "this student already has an account")
 			return
 		}
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -195,7 +195,7 @@ func (h *Handler) AdminCreateStudent(c *gin.Context) {
 			response.WriteError(c, http.StatusConflict, "this username is already taken")
 			return
 		}
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -212,7 +212,7 @@ func (h *Handler) GetMyCourses(c *gin.Context) {
 
 	courses, err := h.studentSvc.GetStudentCourses(c.Request.Context(), userID)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -248,7 +248,7 @@ func (h *Handler) GetMyLessons(c *gin.Context) {
 			response.WriteError(c, http.StatusNotFound, "student profile not found")
 			return
 		}
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -285,7 +285,7 @@ func (h *Handler) SetLessonProgress(c *gin.Context) {
 			response.WriteError(c, http.StatusNotFound, "student profile not found")
 			return
 		}
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 

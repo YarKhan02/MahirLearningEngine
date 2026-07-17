@@ -22,6 +22,9 @@ var announcementForUserSQL string
 //go:embed sql/announcement_delete.sql
 var announcementDeleteSQL string
 
+//go:embed sql/announcement_get_by_id.sql
+var announcementGetByIDSQL string
+
 type AnnouncementRepository struct {
 	db *sql.DB
 }
@@ -80,6 +83,27 @@ func (r *AnnouncementRepository) Delete(ctx context.Context, id uuid.UUID) error
 	}
 
 	return nil
+}
+
+func (r *AnnouncementRepository) GetByID(ctx context.Context, id uuid.UUID) (*announcement.Announcement, error) {
+	row := r.db.QueryRowContext(ctx, announcementGetByIDSQL, id)
+
+	var a announcement.Announcement
+	if err := row.Scan(
+		&a.ID,
+		&a.BatchID,
+		&a.Title,
+		&a.Description,
+		&a.CreatedAt,
+		&a.BatchName,
+	); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, announcement.ErrNotFound
+		}
+		return nil, fmt.Errorf("get announcement by id: %w", err)
+	}
+
+	return &a, nil
 }
 
 func scanAnnouncements(rows *sql.Rows) ([]announcement.Announcement, error) {

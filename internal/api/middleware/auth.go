@@ -6,19 +6,32 @@ import (
 	"strings"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
+	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/logging"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type contextKey string
 
 const claimsKey contextKey = "auth_claims"
 
+// logAuthFailure records a rejected request as a structured security event.
+// client_ip and request_id are already on the context logger.
+func logAuthFailure(c *gin.Context, reason string) {
+	logging.FromLogger(c.Request.Context()).Warn("authentication failed",
+		zap.String("event", "auth_failure"),
+		zap.String("reason", reason),
+		zap.String("path", c.FullPath()),
+	)
+}
+
 func Auth(tokenSvc *token.Service, redis *redis.RedisClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
+			logAuthFailure(c, "missing_header")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "missing authorization header",
 			})
@@ -27,6 +40,7 @@ func Auth(tokenSvc *token.Service, redis *redis.RedisClient) gin.HandlerFunc {
 
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+			logAuthFailure(c, "malformed_header")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "invalid authorization header",
 			})
@@ -35,6 +49,7 @@ func Auth(tokenSvc *token.Service, redis *redis.RedisClient) gin.HandlerFunc {
 
 		claims, err := tokenSvc.ValidateAccessToken(parts[1])
 		if err != nil {
+			logAuthFailure(c, "invalid_token")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "invalid token",
 			})
@@ -44,6 +59,7 @@ func Auth(tokenSvc *token.Service, redis *redis.RedisClient) gin.HandlerFunc {
 		if redis != nil && claims.ID != "" {
 			blocked, err := redis.Exists(c.Request.Context(), "blocklist:" + claims.ID)
 			if err != nil || blocked {
+				logAuthFailure(c, "token_revoked")
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 					"error": "token revoked",
 				})
@@ -75,6 +91,13 @@ func RequireRole(role string) gin.HandlerFunc {
 		}
 		
 		if claims.Role != role {
+			logging.FromLogger(c.Request.Context()).Warn("access forbidden",
+				zap.String("event", "forbidden"),
+				zap.String("required_role", role),
+				zap.String("actual_role", claims.Role),
+				zap.String("user_id", claims.UserID),
+				zap.String("path", c.FullPath()),
+			)
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
 				"error": "forbidden",
 			})

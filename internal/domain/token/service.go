@@ -13,8 +13,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
-
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
@@ -23,9 +21,9 @@ var ErrInvalidRefreshToken = errors.New("invalid or expired refresh token")
 
 // Claims is the JWT payload. Used by both service (sign) and middleware (verify).
 type Claims struct {
-	UserID      string              `json:"sub"`
-	Email       string              `json:"email"`
-	Role 		string            	`json:"role"`
+	UserID string `json:"sub"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -56,18 +54,18 @@ func NewService(
 }
 
 // IssueAccessToken signs a short-lived JWT with user identity and roles.
-func (s *Service) IssueAccessToken(u *user.User) (string, error) {
+func (s *Service) IssueAccessToken(userID uuid.UUID, email, role string) (string, error) {
 	now := time.Now()
 	claims := Claims{
-		UserID:      	u.ID.String(),
-		Email:       	u.Email,
-		Role: 			u.Role,
+		UserID: userID.String(),
+		Email:  email,
+		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        uuid.NewString(), // jti — used for blocklisting
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.accessTokenTTL)),
 			Issuer:    s.issuer,
-			Subject:   u.ID.String(),
+			Subject:   userID.String(),
 		},
 	}
 
@@ -77,7 +75,7 @@ func (s *Service) IssueAccessToken(u *user.User) (string, error) {
 }
 
 // IssueRefreshToken generates an opaque random token, stores its SHA-256 hash.
-func (s *Service) IssueRefreshToken(ctx context.Context, u *user.User, ip, ua string) (string, error) {
+func (s *Service) IssueRefreshToken(ctx context.Context, userID uuid.UUID, ip, ua string) (string, error) {
 	raw := make([]byte, 64)
 	if _, err := rand.Read(raw); err != nil {
 		return "", fmt.Errorf("failed to generate refresh token: %w", err)
@@ -88,7 +86,7 @@ func (s *Service) IssueRefreshToken(ctx context.Context, u *user.User, ip, ua st
 	tokenHash := hex.EncodeToString(h[:])
 
 	rt := &RefreshToken{
-		UserID:    u.ID,
+		UserID:    userID,
 		TokenHash: tokenHash,
 		IPAddress: ip,
 		UserAgent: ua,

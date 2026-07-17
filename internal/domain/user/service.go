@@ -5,19 +5,22 @@ import (
 	"errors"
 	"time"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/dto"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/common"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/crypto"
-	
+	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/logging"
+
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 var (
-	ErrUserNotFound       = errors.New("user not found")
-	ErrEmailTaken         = errors.New("email already registered")
-	ErrUsernameTaken      = errors.New("username already taken")
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrAccountLocked      = errors.New("account temporarily locked")
-	ErrAccountBanned      = errors.New("account banned")
+	ErrUserNotFound       	= errors.New("user not found")
+	ErrIDNotFound       	= errors.New("user id found")
+	ErrEmailTaken        	= errors.New("email already registered")
+	ErrUsernameTaken      	= errors.New("username already taken")
+	ErrInvalidCredentials 	= errors.New("invalid credentials")
+	ErrAccountLocked      	= errors.New("account temporarily locked")
+	ErrAccountBanned      	= errors.New("account banned")
 )
 
 const (
@@ -37,12 +40,12 @@ type Service struct {
 
 func NewService(userRepo Repository, roleRepo RoleLoader) *Service {
 	return &Service{
-		userRepo: userRepo, 
+		userRepo: userRepo,
 		roleRepo: roleRepo,
-	} 
+	}
 }
 
-func (s *Service) RegisterAdmin(ctx context.Context, req dto.RegisterRequest) (*User, error) {
+func (s *Service) RegisterAdmin(ctx context.Context, req RegisterRequest) (*User, error) {
 	// Check if the email is already taken
 	existingUser, err := s.userRepo.FindByEmailExists(ctx, req.Email)
 	if err != nil && err != ErrUserNotFound {
@@ -64,7 +67,7 @@ func (s *Service) RegisterAdmin(ctx context.Context, req dto.RegisterRequest) (*
 		PasswordHash: passwordHash,
 		IsVerified:   true,
 		IsBanned:     false,
-		Role:   	  "admin",
+		Role:         "admin",
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
@@ -109,6 +112,12 @@ func (s *Service) Authenticate(ctx context.Context, identifier string, password 
 		if attempts >= maxFailedAttempts {
 			t := time.Now().Add(lockDuration)
 			lockedUntil = &t
+			// Repeated failures crossed the threshold — a brute-force signal.
+			logging.FromLogger(ctx).Warn("account locked after repeated failures",
+				zap.String("event", "account_locked"),
+				zap.String("user_id", u.ID.String()),
+				zap.Int("failed_attempts", attempts),
+			)
 		}
 		s.userRepo.UpdateFailedAttempts(ctx, u.ID, attempts, lockedUntil) //nolint:errcheck
 		return nil, ErrInvalidCredentials
@@ -131,18 +140,18 @@ func (s *Service) FindByID(ctx context.Context, id uuid.UUID) (*User, error) {
 	return s.userRepo.FindByID(ctx, id)
 }
 
-func (s *Service) RegisterStudentAccount(ctx context.Context, username, password string) (*User, error) {
+func (s *Service) RegisterStudentAccount(ctx context.Context, username, password string) error {
 	usernameTaken, err := s.userRepo.FindByUsernameExists(ctx, username)
 	if err != nil && err != ErrUserNotFound {
-		return nil, err
+		return err
 	}
 	if usernameTaken {
-		return nil, ErrUsernameTaken
+		return common.ErrUsernameTaken
 	}
 
 	passwordHash, err := crypto.HashPassword(password)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	user := &User{
@@ -156,12 +165,22 @@ func (s *Service) RegisterStudentAccount(ctx context.Context, username, password
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := s.roleRepo.AddRoleToUser(ctx, user.ID, user.Role); err != nil {
-		return nil, err
+		return err
 	}
 
-	return user, nil
+	return nil
+}
+
+func (s *Service) ResetPassword(ctx context.Context, userID uuid.UUID, newPassword string) error {
+	
+	hashPassword, err := crypto.HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+
+	return s.userRepo.ResetPassword(ctx, userID, hashPassword)
 }

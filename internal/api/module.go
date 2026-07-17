@@ -1,7 +1,7 @@
-package http
+package api
 
 import "github.com/gin-gonic/gin"
 
 type Module interface {
-	RegisterRoutes(r *gin.RouterGroup)
+	RegisterRoutes(r *gin.Engine)
 }

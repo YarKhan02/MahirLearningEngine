@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/response"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/middleware"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/response"
 	
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -37,7 +37,7 @@ func (h *Handler) CreateAnnouncement(c *gin.Context) {
 		case errors.Is(err, ErrEmptyTitle), errors.Is(err, ErrEmptyDescription):
 			response.WriteError(c, http.StatusBadRequest, err.Error())
 		default:
-			response.WriteError(c, http.StatusInternalServerError, err.Error())
+			response.WriteInternal(c, err)
 		}
 		return
 	}
@@ -48,7 +48,7 @@ func (h *Handler) CreateAnnouncement(c *gin.Context) {
 func (h *Handler) GetAnnouncements(c *gin.Context) {
 	list, err := h.svc.GetAll(c.Request.Context())
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -72,7 +72,7 @@ func (h *Handler) DeleteAnnouncement(c *gin.Context) {
 			response.WriteError(c, http.StatusNotFound, "announcement not found")
 			return
 		}
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -88,7 +88,7 @@ func (h *Handler) GetMyAnnouncements(c *gin.Context) {
 
 	list, err := h.svc.GetForUser(c.Request.Context(), userID)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 

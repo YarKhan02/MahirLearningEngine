@@ -1,0 +1,4 @@
+positions:
+  ? path: /Users/yarkhan/Tech/MahirLearning/MahirLearningEngine/logs/app.log
+    labels: '{job="mahirlearning"}'
+  : "33236"

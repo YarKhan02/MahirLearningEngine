@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/response"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/middleware"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/response"
 	"github.com/YarKhan02/MahirLearningEngine/internal/constant"
 
 	"github.com/gin-gonic/gin"
@@ -43,7 +43,7 @@ func (h *Handler) GetRoster(c *gin.Context) {
 
 	roster, err := h.svc.GetRoster(c.Request.Context(), batchIDU, date)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -94,7 +94,7 @@ func (h *Handler) Mark(c *gin.Context) {
 			response.WriteError(c, http.StatusBadRequest, err.Error())
 			return
 		}
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -111,7 +111,7 @@ func (h *Handler) GetStudentRecords(c *gin.Context) {
 
 	records, err := h.svc.GetStudentRecords(c.Request.Context(), studentIDU)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -137,7 +137,7 @@ func (h *Handler) GetMyRecords(c *gin.Context) {
 			response.WriteError(c, http.StatusNotFound, "student profile not found")
 			return
 		}
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/middleware"
-	"github.com/YarKhan02/MahirLearningEngine/internal/api/http/response"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/middleware"
+	"github.com/YarKhan02/MahirLearningEngine/internal/api/response"
 	
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -20,6 +20,7 @@ func NewHandler(svc *Service) *Handler {
 }
 
 func (h *Handler) CreateTimetable(c *gin.Context) {
+	
 	batchID, err := uuid.Parse(c.Param("batchId"))
 	if err != nil {
 		response.WriteError(c, http.StatusBadRequest, "invalid batch id")
@@ -45,7 +46,7 @@ func (h *Handler) CreateTimetable(c *gin.Context) {
 			errors.Is(err, ErrTimeOrder):
 			response.WriteError(c, http.StatusBadRequest, err.Error())
 		default:
-			response.WriteError(c, http.StatusInternalServerError, err.Error())
+			response.WriteInternal(c, err)
 		}
 		return
 	}
@@ -62,7 +63,7 @@ func (h *Handler) GetBatchTimetable(c *gin.Context) {
 
 	entries, err := h.svc.GetByBatch(c.Request.Context(), batchID)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -86,7 +87,7 @@ func (h *Handler) DeleteTimetable(c *gin.Context) {
 			response.WriteError(c, http.StatusNotFound, "timetable not found")
 			return
 		}
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
@@ -102,7 +103,7 @@ func (h *Handler) GetMyUpcoming(c *gin.Context) {
 
 	sessions, err := h.svc.GetUpcomingForUser(c.Request.Context(), userID)
 	if err != nil {
-		response.WriteError(c, http.StatusInternalServerError, err.Error())
+		response.WriteInternal(c, err)
 		return
 	}
 
