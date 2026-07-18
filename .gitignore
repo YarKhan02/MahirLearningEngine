@@ -3,3 +3,9 @@
 /keys/private.pem
 
 logs/*
+
+observability/
+
+data-alloy/
+
+docs/

@@ -7,3 +7,7 @@ keys/
 Makefile
 *.md
 keys/private.pem
+observability/
+logs/
+data-alloy/
+docs/
