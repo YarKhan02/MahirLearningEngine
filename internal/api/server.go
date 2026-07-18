@@ -9,13 +9,15 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func NewServer(allowedOrigin string, addr string, modules []Module, logger *zap.Logger, rateLimitRequests int, rateLimitWindow time.Duration) *http.Server {
+func NewServer(allowedOrigin string, addr string, modules []Module, logger *zap.Logger, rateLimitRequests int, rateLimitWindow time.Duration, prometheusUsername string, prometheusPassword string) *http.Server {
 	r := gin.New()
 	r.Use(middleware.RequestID())
 	r.Use(middleware.RequestLogger(logger))
 	r.Use(middleware.Recovery())
+	r.Use(middleware.PrometheusMiddleware())
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{allowedOrigin, "https://www.mahircodelab.com"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -23,6 +25,14 @@ func NewServer(allowedOrigin string, addr string, modules []Module, logger *zap.
 		AllowCredentials: true,
 	}))
 	r.Use(middleware.RateLimit(logger, rateLimitRequests, rateLimitWindow))
+
+	metrics := r.Group(
+		"/metrics",
+		gin.BasicAuth(gin.Accounts{
+			prometheusUsername: prometheusPassword,
+		}),
+	)
+	metrics.GET("", gin.WrapH(promhttp.Handler()))
 
 	for _, m := range modules {
 		m.RegisterRoutes(r)

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/logging"
+	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/metrics"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -42,6 +43,7 @@ func RateLimit(logger *zap.Logger, limit int, window time.Duration) gin.HandlerF
 
 		ip := c.ClientIP()
 		if !rl.allow(ip) {
+			metrics.RecordSecurityEvent("rate_limit_exceeded", "")
 			logging.FromLogger(c.Request.Context()).Warn("rate limit exceeded",
 				zap.String("event", "rate_limit_exceeded"),
 				zap.String("path", c.FullPath()),

@@ -19,14 +19,13 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/batch"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/course"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/dashboard"
-
-	// "github.com/YarKhan02/MahirLearningEngine/internal/domain/role"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/student"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/timetable"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/crypto"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/logging"
+	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/metrics"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/postgres/migrations"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/postgres/repository"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
@@ -57,7 +56,7 @@ func run() error {
 	if err != nil {
 		panic(err)
 	}
-	defer logger.Sync() // flushes buffered log entries on shutdown
+	defer func() { _ = logger.Sync() }() // flushes buffered log entries on shutdown
 
 	db, err := sql.Open("pgx", cfg.DatabaseURL)
 	if err != nil {
@@ -65,12 +64,20 @@ func run() error {
 	}
 	defer db.Close()
 
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	err = db.PingContext(ctx)
 	cancel()
 	if err != nil {
 		return fmt.Errorf("database ping failed: %w", err)
 	}
+
+	// DB pool collector + build info on the default Prometheus registry.
+	metrics.Register(db, "mahirlearning", "1", cfg.Env)
 
 	if err := migrations.RunMigration(cfg.MigrationsPath, cfg.DatabaseURL); err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)
@@ -94,30 +101,42 @@ func run() error {
 	// must fall back to a plain SameSite=Lax cookie or the browser drops it.
 	secureCookies := !strings.EqualFold(cfg.Env, "development")
 
-	userRepo := repository.NewUserRepository(db)
-	courseRepo := repository.NewCourseRepository(db)
-	batchRepo := repository.NewBatchRepository(db)
 	roleRepo := repository.NewRoleRepository(db)
-	studentRepo := repository.NewStudentRepository(db)
-	assignmentRepo := repository.NewAssignmentRepository(db)
-	attendanceRepo := repository.NewAttendanceRepository(db)
-	dashboardRepo := repository.NewDashboardRepository(db)
-	timetableRepo := repository.NewTimetableRepository(db)
-	tokenRepo := repository.NewTokenRepository(db)
 
 	announcementRepo := repository.NewAnnouncementRepository(db)
 	announcementCache := announcement.NewCachedRepository(announcementRepo, redisClient)
 	announcementSvc := announcement.NewService(announcementCache)
 
+	courseRepo := repository.NewCourseRepository(db)
+	courseCache := course.NewCachedRepository(courseRepo, redisClient)
+	courseSvc := course.NewService(courseCache)
+
+	batchRepo := repository.NewBatchRepository(db)
+	batchCache := batch.NewCachedRepository(batchRepo, redisClient)
+	batchSvc := batch.NewService(batchCache)
+	
+	studentRepo := repository.NewStudentRepository(db)
+	studentCache := student.NewCachedRepository(studentRepo, redisClient)
+	studentSvc := student.NewService(studentCache)
+	
+	dashboardRepo := repository.NewDashboardRepository(db)
+	dashboardCache := dashboard.NewCachedRepository(dashboardRepo, redisClient)
+	dashboardSvc := dashboard.NewService(dashboardCache)
+
+	timetableRepo := repository.NewTimetableRepository(db)
+	timetableCache := timetable.NewCachedRepository(timetableRepo, redisClient)
+	timetableSvc := timetable.NewService(timetableCache)
+
+	userRepo := repository.NewUserRepository(db)
 	userSvc := user.NewService(userRepo, roleRepo)
-	courseSvc := course.NewService(courseRepo)
-	batchSvc := batch.NewService(batchRepo)
-	// roleSvc := role.NewService(roleRepo)
-	studentSvc := student.NewService(studentRepo)
+
+	assignmentRepo := repository.NewAssignmentRepository(db)
 	assignmentSvc := assignment.NewService(assignmentRepo)
+	
+	attendanceRepo := repository.NewAttendanceRepository(db)
 	attendanceSvc := attendance.NewService(attendanceRepo)
-	dashboardSvc := dashboard.NewService(dashboardRepo)
-	timetableSvc := timetable.NewService(timetableRepo)
+	
+	tokenRepo := repository.NewTokenRepository(db)
 	tokenSvc := token.NewService(key, tokenRepo, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 
 	module := []api.Module{
@@ -132,7 +151,7 @@ func run() error {
 		announcement.NewModule(announcementSvc, tokenSvc, redisClient),
 	}
 
-	srv := api.NewServer(cfg.AllowedOrigin, cfg.Addr, module, logger, cfg.RateLimitRequests, cfg.RateLimitWindow)
+	srv := api.NewServer(cfg.AllowedOrigin, cfg.Addr, module, logger, cfg.RateLimitRequests, cfg.RateLimitWindow, cfg.PrometheusUsername, cfg.PrometheusPassword)
 
 	logger.Info("server starting", zap.String("event", "server_start"), zap.String("addr", cfg.Addr))
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

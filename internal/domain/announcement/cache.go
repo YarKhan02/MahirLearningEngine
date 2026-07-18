@@ -2,18 +2,19 @@ package announcement
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
+	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/cache"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
 
 	"github.com/google/uuid"
 )
 
 const (
-	cacheVersion 	= "v1"
-	allTTL			= 2 * time.Minute
-	userTTL			= 2 * time.Minute
+	cacheVersion 			= "v1"
+	announcementCacheName 	= "announcement"
+	allTTL					= 2 * time.Minute
+	userTTL					= 2 * time.Minute
 )
 
 type CachedRepository struct {
@@ -38,28 +39,6 @@ func keyUser(id uuid.UUID) string {
 
 func keyBatch(id uuid.UUID) string {
 	return "announcements:" + cacheVersion + ":batch" + id.String()
-}
-
-func (c *CachedRepository) getList(ctx context.Context, key string) ([]Announcement, bool) {
-	
-	raw, err := c.cache.Get(ctx, key)
-	if err != nil {
-		return nil, false
-	}
-	var list []Announcement
-	if err := json.Unmarshal([]byte(raw), &list); err != nil {
-		return nil, false
-	}
-	return list, true
-}
-
-func (c *CachedRepository) setList(ctx context.Context, key string, list []Announcement, ttl time.Duration) {
-	
-	b, err := json.Marshal(list)
-	if err != nil {
-		return
-	}
-	_ = c.cache.Set(ctx, key, string(b), ttl)
 }
 
 // repository interface methods
@@ -95,27 +74,27 @@ func (c *CachedRepository) GetByID(ctx context.Context, id uuid.UUID) (*Announce
 func (c *CachedRepository) GetAll(ctx context.Context) ([]Announcement, error) {
 	
 	key := keyAll()
-	if list, ok := c.getList(ctx, key); ok {
-		return list, nil
+	if v, ok := cache.GetJSON[[]Announcement](ctx, c.cache, announcementCacheName, key); ok {
+		return v, nil
 	}
 	list, err := c.inner.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
-	c.setList(ctx, key, list, allTTL)
+	cache.SetJSON(ctx, c.cache, key, list, allTTL)
 	return list, nil
 }
 
 func (c *CachedRepository) GetForUser(ctx context.Context, userID uuid.UUID) ([]Announcement, error) {
 	
 	key := keyUser(userID)
-	if list, ok := c.getList(ctx, key); ok {
-		return list, nil
+	if v, ok := cache.GetJSON[[]Announcement](ctx, c.cache, announcementCacheName, key); ok {
+		return v, nil
 	}
 	list, err := c.inner.GetForUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	c.setList(ctx, key, list, userTTL)
+	cache.SetJSON(ctx, c.cache, key, list, userTTL)
 	return list, nil
 }

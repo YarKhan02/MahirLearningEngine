@@ -9,6 +9,7 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/common"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/logging"
+	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/metrics"
 	"github.com/google/uuid"
 
 	"github.com/gin-gonic/gin"
@@ -108,6 +109,8 @@ func (h *Handler) Login(c *gin.Context) {
 			// always same message — don't leak which field is wrong
 			response.WriteError(c, http.StatusUnauthorized, "invalid credentials")
 		}
+		metrics.RecordSecurityEvent("login_failed", reason)
+		metrics.RecordLogin("failure")
 		logging.FromLogger(c.Request.Context()).Warn("login failed",
 			zap.String("event", "login_failed"),
 			zap.String("identifier", req.Identifier),
@@ -115,6 +118,8 @@ func (h *Handler) Login(c *gin.Context) {
 		)
 		return
 	}
+
+	metrics.RecordLogin("success")
 
 	accessToken, err := h.tokenSvc.IssueAccessToken(u.ID, u.Email, u.Role)
 	if err != nil {

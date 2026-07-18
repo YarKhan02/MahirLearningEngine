@@ -8,6 +8,7 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/common"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/crypto"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/logging"
+	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/metrics"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -113,6 +114,7 @@ func (s *Service) Authenticate(ctx context.Context, identifier string, password 
 			t := time.Now().Add(lockDuration)
 			lockedUntil = &t
 			// Repeated failures crossed the threshold — a brute-force signal.
+			metrics.RecordSecurityEvent("account_locked", "brute_force")
 			logging.FromLogger(ctx).Warn("account locked after repeated failures",
 				zap.String("event", "account_locked"),
 				zap.String("user_id", u.ID.String()),

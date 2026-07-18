@@ -7,6 +7,7 @@ import (
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/logging"
+	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/metrics"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -20,6 +21,7 @@ const claimsKey contextKey = "auth_claims"
 // logAuthFailure records a rejected request as a structured security event.
 // client_ip and request_id are already on the context logger.
 func logAuthFailure(c *gin.Context, reason string) {
+	metrics.RecordSecurityEvent("auth_failure", reason)
 	logging.FromLogger(c.Request.Context()).Warn("authentication failed",
 		zap.String("event", "auth_failure"),
 		zap.String("reason", reason),
@@ -91,6 +93,7 @@ func RequireRole(role string) gin.HandlerFunc {
 		}
 		
 		if claims.Role != role {
+			metrics.RecordSecurityEvent("forbidden", "role_mismatch")
 			logging.FromLogger(c.Request.Context()).Warn("access forbidden",
 				zap.String("event", "forbidden"),
 				zap.String("required_role", role),

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/logging"
+	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/metrics"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -12,6 +13,7 @@ import (
 // so a single bad request can never take the process down or leak internals.
 func Recovery() gin.HandlerFunc {
 	return gin.CustomRecovery(func(c *gin.Context, err any) {
+		metrics.RecordPanic()
 		logging.FromLogger(c.Request.Context()).Error("panic recovered",
 			zap.String("event", "panic"),
 			zap.Any("error", err),

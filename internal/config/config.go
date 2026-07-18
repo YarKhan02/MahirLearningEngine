@@ -11,19 +11,21 @@ import (
 )
 
 type Config struct {
-	Addr              string
-	DatabaseURL       string
-	RedisURL          string
-	RSAPrivateKeyPEM  string
-	MigrationsPath    string
-	RateLimitRequests int
-	RateLimitWindow   time.Duration
-	Env               string
-	JWTIssuer         string
-	AccessTokenTTL    time.Duration
-	RefreshTokenTTL   time.Duration
-	AllowedOrigin     string
-	TempPassword	  string
+	Addr              	string
+	DatabaseURL       	string
+	RedisURL          	string
+	RSAPrivateKeyPEM  	string
+	MigrationsPath    	string
+	RateLimitRequests 	int
+	RateLimitWindow   	time.Duration
+	Env               	string
+	JWTIssuer         	string
+	AccessTokenTTL    	time.Duration
+	RefreshTokenTTL   	time.Duration
+	AllowedOrigin     	string
+	TempPassword	  	string
+	PrometheusUsername	string
+	PrometheusPassword	string
 }
 
 func Load() (*Config, error) {
@@ -43,7 +45,9 @@ func Load() (*Config, error) {
 		Env:               	getEnv("ENV"),
 		JWTIssuer:         	getEnv("JWT_ISSUER"),
 		AllowedOrigin:     	getEnv("ALLOWED_ORIGIN"),
-		TempPassword: 		getEnv("TEMP_PASSWORD"),	
+		TempPassword: 		getEnv("TEMP_PASSWORD"),
+		PrometheusUsername: getEnv("PROMETHEUS_USERNAME"),
+		PrometheusPassword: getEnv("PROMETHEUS_PASSWORD"),
 	}
 
 	limitStr := getEnv("RATE_LIMIT_REQUESTS")
