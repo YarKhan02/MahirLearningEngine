@@ -26,15 +26,7 @@ func ToCourseResponse(course Course) CourseResponse {
 }
 
 func ToLesson(dto InsertLesson) Lesson {
-	return Lesson{
-		ID:          dto.ID,
-		CourseID:    dto.CourseID,
-		Title:       dto.Title,
-		Description: dto.Description,
-		OrderNo:     dto.OrderNo,
-		YoutubeURL:  dto.YoutubeURL,
-		Content:     dto.Content,
-	}
+	return Lesson(dto)
 }
 
 func ToLessonResponse(lesson Lesson) LessonResponse {
@@ -49,12 +41,5 @@ func ToLessonResponse(lesson Lesson) LessonResponse {
 }
 
 func ToUpdateLesson(dto UpdateLessonRequest) UpdateLesson {
-	return UpdateLesson{
-		ID:          dto.ID,
-		CourseID:    dto.CourseID,
-		Title:       dto.Title,
-		Description: dto.Description,
-		YoutubeURL:  dto.YoutubeURL,
-		Content:     dto.Content,
-	}
+	return UpdateLesson(dto)
 }

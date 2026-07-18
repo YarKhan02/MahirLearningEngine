@@ -56,7 +56,7 @@ func run() error {
 	if err != nil {
 		panic(err)
 	}
-	defer logger.Sync() // flushes buffered log entries on shutdown
+	defer func() { _ = logger.Sync() }() // flushes buffered log entries on shutdown
 
 	db, err := sql.Open("pgx", cfg.DatabaseURL)
 	if err != nil {

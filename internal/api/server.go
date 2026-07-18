@@ -12,7 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func NewServer(allowedOrigin string, addr string, modules []Module, logger *zap.Logger, rateLimitRequests int, rateLimitWindow time.Duration, PrometheusUsername string, PrometheusPassword string) *http.Server {
+func NewServer(allowedOrigin string, addr string, modules []Module, logger *zap.Logger, rateLimitRequests int, rateLimitWindow time.Duration, prometheusUsername string, prometheusPassword string) *http.Server {
 	r := gin.New()
 	r.Use(middleware.RequestID())
 	r.Use(middleware.RequestLogger(logger))
@@ -29,7 +29,7 @@ func NewServer(allowedOrigin string, addr string, modules []Module, logger *zap.
 	metrics := r.Group(
 		"/metrics",
 		gin.BasicAuth(gin.Accounts{
-			PrometheusUsername: PrometheusPassword,
+			prometheusUsername: prometheusPassword,
 		}),
 	)
 	metrics.GET("", gin.WrapH(promhttp.Handler()))
