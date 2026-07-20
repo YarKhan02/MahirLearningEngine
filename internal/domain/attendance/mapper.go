@@ -25,12 +25,7 @@ func ToAttendanceRecordResponse(req Record) AttendanceRecordResponse {
 }
 
 func ToAttendanceSummaryResponse(s Summary) AttendanceSummaryResponse {
-	return AttendanceSummaryResponse{
-		Present:     s.Present,
-		Absent:      s.Absent,
-		Total:       s.Total,
-		TodayStatus: s.TodayStatus,
-	}
+	return AttendanceSummaryResponse(s)
 }
 
 func ToMarkAttendance(batchID uuid.UUID, date time.Time, studentID uuid.UUID, status string, createdBy uuid.UUID) MarkAttendance {
