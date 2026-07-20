@@ -8,7 +8,8 @@ import (
 
 type Repository interface {
 	RegisterStudent(ctx context.Context, s *Student, batchID uuid.UUID) error
-	GetStudents(ctx context.Context, q string) ([]StudentWithBatch, error)
+	GetStudents(ctx context.Context, q string, limit, offset int) ([]StudentWithBatch, error)
+	CountStudents(ctx context.Context, q string) (int, error)
 	GetStudentByID(ctx context.Context, id uuid.UUID) (*Student, error)
 	UpdateStudentStatus(ctx context.Context, id uuid.UUID, status string) error
 	UpdateStudentBatch(ctx context.Context, studentID uuid.UUID, batchID *uuid.UUID) error

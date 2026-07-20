@@ -35,11 +35,23 @@ var submissionUpsertSQL string
 //go:embed sql/submissions_by_batch.sql
 var submissionsByBatchSQL string
 
+//go:embed sql/submissions_by_batch_count.sql
+var submissionsByBatchCountSQL string
+
+//go:embed sql/submissions_by_batch_summary.sql
+var submissionsByBatchSummarySQL string
+
 //go:embed sql/submission_grade.sql
 var submissionGradeSQL string
 
 //go:embed sql/submissions_by_student.sql
 var submissionsByStudentSQL string
+
+//go:embed sql/submissions_by_student_count.sql
+var submissionsByStudentCountSQL string
+
+//go:embed sql/submissions_by_student_summary.sql
+var submissionsByStudentSummarySQL string
 
 //go:embed sql/student_by_user_get.sql
 var assignmentStudentByUserSQL string
@@ -237,47 +249,32 @@ func (r *AssignmentRepository) SubmitAssignment(ctx context.Context, studentID u
 	return nil
 }
 
-func (r *AssignmentRepository) GetBatchSubmissions(ctx context.Context, batchID uuid.UUID) ([]assignment.BatchSubmission, error) {
-	rows, err := r.db.QueryContext(ctx, submissionsByBatchSQL, batchID)
+func (r *AssignmentRepository) GetBatchSubmissions(ctx context.Context, batchID uuid.UUID, q, status string, limit, offset int) ([]assignment.BatchSubmission, error) {
+	rows, err := r.db.QueryContext(ctx, submissionsByBatchSQL, batchID, q, status, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("get batch submissions: %w", err)
 	}
 	defer rows.Close()
 
-	var submissions []assignment.BatchSubmission
+	return scanBatchSubmissions(rows)
+}
 
-	for rows.Next() {
-		var s assignment.BatchSubmission
-
-		if err := rows.Scan(
-			&s.ID,
-			&s.Code,
-			&s.Remarks,
-			&s.Marks,
-			&s.Status,
-			&s.SubmittedAt,
-			&s.StudentID,
-			&s.StudentName,
-			&s.StudentEmail,
-			&s.AssignmentID,
-			&s.AssignmentTitle,
-			&s.TotalMarks,
-			&s.LessonID,
-			&s.LessonTitle,
-			&s.CourseID,
-			&s.CourseTitle,
-		); err != nil {
-			return nil, fmt.Errorf("scan batch submission: %w", err)
-		}
-
-		submissions = append(submissions, s)
+func (r *AssignmentRepository) CountBatchSubmissions(ctx context.Context, batchID uuid.UUID, q, status string) (int, error) {
+	var total int
+	if err := r.db.QueryRowContext(ctx, submissionsByBatchCountSQL, batchID, q, status).Scan(&total); err != nil {
+		return 0, fmt.Errorf("count batch submissions: %w", err)
 	}
+	return total, nil
+}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate batch submissions: %w", err)
+func (r *AssignmentRepository) GetBatchSubmissionSummary(ctx context.Context, batchID uuid.UUID, q string) (assignment.SubmissionSummary, error) {
+	var s assignment.SubmissionSummary
+	if err := r.db.QueryRowContext(ctx, submissionsByBatchSummarySQL, batchID, q).Scan(
+		&s.Total, &s.Submitted, &s.Graded,
+	); err != nil {
+		return assignment.SubmissionSummary{}, fmt.Errorf("batch submission summary: %w", err)
 	}
-
-	return submissions, nil
+	return s, nil
 }
 
 func (r *AssignmentRepository) GradeSubmission(ctx context.Context, submissionID uuid.UUID, marks int, remarks string) error {
@@ -287,13 +284,35 @@ func (r *AssignmentRepository) GradeSubmission(ctx context.Context, submissionID
 	return nil
 }
 
-func (r *AssignmentRepository) GetStudentSubmissions(ctx context.Context, studentID uuid.UUID) ([]assignment.BatchSubmission, error) {
-	rows, err := r.db.QueryContext(ctx, submissionsByStudentSQL, studentID)
+func (r *AssignmentRepository) GetStudentSubmissions(ctx context.Context, studentID uuid.UUID, status string, limit, offset int) ([]assignment.BatchSubmission, error) {
+	rows, err := r.db.QueryContext(ctx, submissionsByStudentSQL, studentID, status, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("get student submissions: %w", err)
 	}
 	defer rows.Close()
 
+	return scanBatchSubmissions(rows)
+}
+
+func (r *AssignmentRepository) CountStudentSubmissions(ctx context.Context, studentID uuid.UUID, status string) (int, error) {
+	var total int
+	if err := r.db.QueryRowContext(ctx, submissionsByStudentCountSQL, studentID, status).Scan(&total); err != nil {
+		return 0, fmt.Errorf("count student submissions: %w", err)
+	}
+	return total, nil
+}
+
+func (r *AssignmentRepository) GetStudentSubmissionSummary(ctx context.Context, studentID uuid.UUID) (assignment.SubmissionSummary, error) {
+	var s assignment.SubmissionSummary
+	if err := r.db.QueryRowContext(ctx, submissionsByStudentSummarySQL, studentID).Scan(
+		&s.Total, &s.Submitted, &s.Graded,
+	); err != nil {
+		return assignment.SubmissionSummary{}, fmt.Errorf("student submission summary: %w", err)
+	}
+	return s, nil
+}
+
+func scanBatchSubmissions(rows *sql.Rows) ([]assignment.BatchSubmission, error) {
 	var submissions []assignment.BatchSubmission
 
 	for rows.Next() {
@@ -317,14 +336,14 @@ func (r *AssignmentRepository) GetStudentSubmissions(ctx context.Context, studen
 			&s.CourseID,
 			&s.CourseTitle,
 		); err != nil {
-			return nil, fmt.Errorf("scan student submission: %w", err)
+			return nil, fmt.Errorf("scan submission: %w", err)
 		}
 
 		submissions = append(submissions, s)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate student submissions: %w", err)
+		return nil, fmt.Errorf("iterate submissions: %w", err)
 	}
 
 	return submissions, nil

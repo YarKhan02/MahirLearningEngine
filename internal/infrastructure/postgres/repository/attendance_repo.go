@@ -24,6 +24,12 @@ var attendanceMarkUpsertSQL string
 //go:embed sql/attendance_by_student.sql
 var attendanceByStudentSQL string
 
+//go:embed sql/attendance_by_student_count.sql
+var attendanceByStudentCountSQL string
+
+//go:embed sql/attendance_summary_by_student.sql
+var attendanceSummaryByStudentSQL string
+
 //go:embed sql/student_by_user_get.sql
 var attendanceStudentByUserSQL string
 
@@ -102,8 +108,8 @@ func (r *AttendanceRepository) Mark(ctx context.Context, req attendance.MarkAtte
 	return tx.Commit()
 }
 
-func (r *AttendanceRepository) GetStudentRecords(ctx context.Context, studentID uuid.UUID) ([]attendance.Record, error) {
-	rows, err := r.db.QueryContext(ctx, attendanceByStudentSQL, studentID)
+func (r *AttendanceRepository) GetStudentRecords(ctx context.Context, studentID uuid.UUID, limit, offset int) ([]attendance.Record, error) {
+	rows, err := r.db.QueryContext(ctx, attendanceByStudentSQL, studentID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("get attendance records: %w", err)
 	}
@@ -130,6 +136,36 @@ func (r *AttendanceRepository) GetStudentRecords(ctx context.Context, studentID 
 	}
 
 	return records, nil
+}
+
+func (r *AttendanceRepository) CountStudentRecords(ctx context.Context, studentID uuid.UUID) (int, error) {
+	var total int
+	if err := r.db.QueryRowContext(ctx, attendanceByStudentCountSQL, studentID).Scan(&total); err != nil {
+		return 0, fmt.Errorf("count attendance records: %w", err)
+	}
+	return total, nil
+}
+
+func (r *AttendanceRepository) GetStudentSummary(ctx context.Context, studentID uuid.UUID) (attendance.Summary, error) {
+	var (
+		s     attendance.Summary
+		today sql.NullString
+	)
+
+	if err := r.db.QueryRowContext(ctx, attendanceSummaryByStudentSQL, studentID).Scan(
+		&s.Present,
+		&s.Absent,
+		&s.Total,
+		&today,
+	); err != nil {
+		return attendance.Summary{}, fmt.Errorf("attendance summary: %w", err)
+	}
+
+	if today.Valid {
+		s.TodayStatus = &today.String
+	}
+
+	return s, nil
 }
 
 func (r *AttendanceRepository) GetStudentIDByUserID(ctx context.Context, userID uuid.UUID) (uuid.UUID, error) {

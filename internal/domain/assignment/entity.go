@@ -28,14 +28,17 @@ type Submission struct {
 	SubmittedAt  time.Time
 }
 
-// StudentAssignment is an assignment paired with the student's submission (if any).
 type StudentAssignment struct {
 	Assignment
 	Submission *Submission
 }
 
-// BatchSubmission is a submission enriched with student, assignment,
-// lesson, and course context — the admin review view.
+type SubmissionSummary struct {
+	Total     int
+	Submitted int
+	Graded    int
+}
+
 type BatchSubmission struct {
 	ID              uuid.UUID
 	Code            string

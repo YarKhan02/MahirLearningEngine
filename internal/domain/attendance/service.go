@@ -32,15 +32,34 @@ func (s *Service) Mark(ctx context.Context, req MarkAttendance) error {
 	return s.repo.Mark(ctx, req)
 }
 
-func (s *Service) GetStudentRecords(ctx context.Context, studentID uuid.UUID) ([]Record, error) {
-	return s.repo.GetStudentRecords(ctx, studentID)
+func (s *Service) GetStudentRecords(ctx context.Context, studentID uuid.UUID, limit, offset int) ([]Record, int, error) {
+	total, err := s.repo.CountStudentRecords(ctx, studentID)
+	if err != nil {
+		return nil, 0, err
+	}
+	records, err := s.repo.GetStudentRecords(ctx, studentID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	return records, total, nil
 }
 
-// GetMyRecords returns the logged-in student's attendance history.
-func (s *Service) GetMyRecords(ctx context.Context, userID uuid.UUID) ([]Record, error) {
+func (s *Service) GetStudentSummary(ctx context.Context, studentID uuid.UUID) (Summary, error) {
+	return s.repo.GetStudentSummary(ctx, studentID)
+}
+
+func (s *Service) GetMyRecords(ctx context.Context, userID uuid.UUID, limit, offset int) ([]Record, int, error) {
 	studentID, err := s.repo.GetStudentIDByUserID(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return s.repo.GetStudentRecords(ctx, studentID)
+	return s.GetStudentRecords(ctx, studentID, limit, offset)
+}
+
+func (s *Service) GetMySummary(ctx context.Context, userID uuid.UUID) (Summary, error) {
+	studentID, err := s.repo.GetStudentIDByUserID(ctx, userID)
+	if err != nil {
+		return Summary{}, err
+	}
+	return s.repo.GetStudentSummary(ctx, studentID)
 }

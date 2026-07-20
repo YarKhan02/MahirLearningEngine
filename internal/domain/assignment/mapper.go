@@ -65,6 +65,10 @@ func ToStudentAssignmentResponse(req StudentAssignment) StudentAssignmentRespons
 	return resp
 }
 
+func ToSubmissionSummaryResponse(s SubmissionSummary) SubmissionSummaryResponse {
+	return SubmissionSummaryResponse(s)
+}
+
 func ToBatchSubmissionResponse(req BatchSubmission) BatchSubmissionResponse {
 	return BatchSubmissionResponse{
 		ID:              req.ID.String(),

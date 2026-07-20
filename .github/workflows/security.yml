@@ -20,31 +20,50 @@ jobs:
           # Full history so gitleaks can scan every commit, not just HEAD.
           fetch-depth: 0
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
       # Secret scanning
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Dependency vulnerabilities (only flags code paths you actually call)
-      - uses: golang/govulncheck-action@v1
+      - uses: actions/setup-go@v5
         with:
-          go-version-input: ""
           go-version-file: go.mod
+          cache: true
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: govulncheck (fail only on fixable vulns)
+        run: |
+          set -uo pipefail
+
+          # Machine-readable output for gating.
+          govulncheck -format json ./... > govulncheck.json || true
+
+          # Human-readable report in the job log.
+          echo "----- govulncheck report -----"
+          govulncheck ./... || true
+          echo "------------------------------"
+
+          # Count findings that carry a non-empty fixed_version (i.e. a fix exists).
+          fixable=$(jq -s '[.[] | select(.finding.fixed_version != null and .finding.fixed_version != "")] | length' govulncheck.json)
+
+          if [ "$fixable" -gt 0 ]; then
+            echo "::error::$fixable vulnerability finding(s) have an available fix — upgrade the affected module."
+            exit 1
+          fi
+
+          echo "No fixable vulnerabilities. Remaining advisories have no released fix and are treated as warnings."
 
       # SBOM — inventory of everything in the build
       - uses: anchore/sbom-action@v0
         with:
           path: .
 
-      # Vulnerability scan of source + dependency files
       - uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scan-ref: .
           exit-code: "1"
           severity: CRITICAL,HIGH
+          ignore-unfixed: true

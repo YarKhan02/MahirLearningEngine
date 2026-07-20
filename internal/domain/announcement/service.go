@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/YarKhan02/MahirLearningEngine/internal/pagination"
 	"github.com/google/uuid"
 )
 
@@ -36,6 +37,22 @@ func (s *Service) Create(ctx context.Context, a *Announcement) error {
 
 func (s *Service) GetAll(ctx context.Context) ([]Announcement, error) {
 	return s.repo.GetAll(ctx)
+}
+
+func (s *Service) GetAllPaged(ctx context.Context, p pagination.Params) ([]Announcement, int, error) {
+	all, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	return pagination.Slice(all, p), len(all), nil
+}
+
+func (s *Service) GetForUserPaged(ctx context.Context, userID uuid.UUID, p pagination.Params) ([]Announcement, int, error) {
+	all, err := s.repo.GetForUser(ctx, userID)
+	if err != nil {
+		return nil, 0, err
+	}
+	return pagination.Slice(all, p), len(all), nil
 }
 
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*Announcement, error) {
