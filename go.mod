@@ -2,6 +2,8 @@ module github.com/YarKhan02/MahirLearningEngine
 
 go 1.26.0
 
+toolchain go1.26.5
+
 require (
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-gonic/gin v1.12.0
