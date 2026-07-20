@@ -28,11 +28,13 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	{
         admin.GET("/batch/:batchId", m.handler.GetRoster)
 		admin.GET("/:studentId", m.handler.GetStudentRecords)
+		admin.GET("/:studentId/summary", m.handler.GetStudentSummary)
 		admin.POST("/:batchId/mark", m.handler.Mark)
 	}
-	
+
 	student := group.Group("/s", middleware.RequireRole("student"))
 	{
 		student.GET("/me", m.handler.GetMyRecords)
+		student.GET("/me/summary", m.handler.GetMySummary)
 	}
 }

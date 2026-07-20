@@ -18,3 +18,10 @@ type AttendanceRecordResponse struct {
 	Status		string	`json:"status"`
 	BatchName	string	`json:"batchName"`
 }
+
+type AttendanceSummaryResponse struct {
+	Present     int     `json:"present"`
+	Absent      int     `json:"absent"`
+	Total       int     `json:"total"`
+	TodayStatus *string `json:"todayStatus,omitempty"`
+}

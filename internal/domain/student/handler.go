@@ -8,6 +8,7 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/response"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/common"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/crypto"
+	"github.com/YarKhan02/MahirLearningEngine/internal/pagination"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -62,18 +63,20 @@ func (h *Handler) RegisterStudent(c *gin.Context) {
 
 func (h *Handler) GetStudents(c *gin.Context) {
 
-	students, err := h.studentSvc.GetStudents(c.Request.Context(), c.Query("q"))
+	p := pagination.Parse(c.Query("page"), c.Query("pageSize"), 10, 10)
+
+	students, total, err := h.studentSvc.GetStudents(c.Request.Context(), c.Query("q"), p.Limit(), p.Offset())
 	if err != nil {
 		response.WriteInternal(c, err)
 		return
 	}
 
-	resp := make([]AdminStudentResponse, 0, len(students))
+	items := make([]AdminStudentResponse, 0, len(students))
 	for _, s := range students {
-		resp = append(resp, ToAdminStudentResponse(s))
+		items = append(items, ToAdminStudentResponse(s))
 	}
 
-	response.WriteJSON(c, http.StatusOK, resp)
+	response.WriteJSON(c, http.StatusOK, pagination.NewPage(items, total, p))
 }
 
 func (h *Handler) UpdateStudentStatus(c *gin.Context) {

@@ -6,7 +6,8 @@ import (
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/middleware"
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/response"
-	
+	"github.com/YarKhan02/MahirLearningEngine/internal/pagination"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -46,7 +47,9 @@ func (h *Handler) CreateAnnouncement(c *gin.Context) {
 }
 
 func (h *Handler) GetAnnouncements(c *gin.Context) {
-	list, err := h.svc.GetAll(c.Request.Context())
+	p := pagination.Parse(c.Query("page"), c.Query("pageSize"), 20, 100)
+
+	list, total, err := h.svc.GetAllPaged(c.Request.Context(), p)
 	if err != nil {
 		response.WriteInternal(c, err)
 		return
@@ -57,7 +60,7 @@ func (h *Handler) GetAnnouncements(c *gin.Context) {
 		resp = append(resp, ToAnnouncementResponse(a))
 	}
 
-	response.WriteJSON(c, http.StatusOK, resp)
+	response.WriteJSON(c, http.StatusOK, pagination.NewPage(resp, total, p))
 }
 
 func (h *Handler) DeleteAnnouncement(c *gin.Context) {
@@ -86,7 +89,9 @@ func (h *Handler) GetMyAnnouncements(c *gin.Context) {
 		return
 	}
 
-	list, err := h.svc.GetForUser(c.Request.Context(), userID)
+	p := pagination.Parse(c.Query("page"), c.Query("pageSize"), 20, 100)
+
+	list, total, err := h.svc.GetForUserPaged(c.Request.Context(), userID, p)
 	if err != nil {
 		response.WriteInternal(c, err)
 		return
@@ -97,5 +102,5 @@ func (h *Handler) GetMyAnnouncements(c *gin.Context) {
 		resp = append(resp, ToAnnouncementResponse(a))
 	}
 
-	response.WriteJSON(c, http.StatusOK, resp)
+	response.WriteJSON(c, http.StatusOK, pagination.NewPage(resp, total, p))
 }

@@ -65,24 +65,35 @@ func (c *CachedRepository) GetStudentLessons(ctx context.Context, courseID, stud
 func (c *CachedRepository) RegisterStudent(ctx context.Context, s *Student, batchID uuid.UUID) error {
 	return c.inner.RegisterStudent(ctx, s, batchID)
 }
-func (c *CachedRepository) GetStudents(ctx context.Context, q string) ([]StudentWithBatch, error) {
-	return c.inner.GetStudents(ctx, q)
+
+func (c *CachedRepository) GetStudents(ctx context.Context, q string, limit, offset int) ([]StudentWithBatch, error) {
+	return c.inner.GetStudents(ctx, q, limit, offset)
 }
+
+func (c *CachedRepository) CountStudents(ctx context.Context, q string) (int, error) {
+	return c.inner.CountStudents(ctx, q)
+}
+
 func (c *CachedRepository) GetStudentByID(ctx context.Context, id uuid.UUID) (*Student, error) {
 	return c.inner.GetStudentByID(ctx, id)
 }
+
 func (c *CachedRepository) UpdateStudentStatus(ctx context.Context, id uuid.UUID, status string) error {
 	return c.inner.UpdateStudentStatus(ctx, id, status)
 }
+
 func (c *CachedRepository) UpdateStudentBatch(ctx context.Context, studentID uuid.UUID, batchID *uuid.UUID) error {
 	return c.inner.UpdateStudentBatch(ctx, studentID, batchID)
 }
+
 func (c *CachedRepository) GetStudentIDByUserID(ctx context.Context, userID uuid.UUID) (uuid.UUID, error) {
 	return c.inner.GetStudentIDByUserID(ctx, userID)
 }
+
 func (c *CachedRepository) HasCourseAccess(ctx context.Context, studentID uuid.UUID, courseID uuid.UUID) (bool, error) {
 	return c.inner.HasCourseAccess(ctx, studentID, courseID)
 }
+
 func (c *CachedRepository) SetLessonProgress(ctx context.Context, studentID uuid.UUID, lessonID uuid.UUID, completed bool) error {
 	return c.inner.SetLessonProgress(ctx, studentID, lessonID, completed)
 }

@@ -28,6 +28,7 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
     {
 		admin.GET("/:lessonId/assignments", m.handler.GetLessonAssignments)
 		admin.GET("/batch/:batchId/submissions", m.handler.GetBatchSubmissions)
+		admin.GET("/batch/:batchId/submissions/summary", m.handler.GetBatchSubmissionSummary)
         admin.POST("/:lessonId/assignments", m.handler.CreateAssignment)
 		admin.PATCH("/:submissionId/grade", m.handler.GradeSubmission)
 		admin.DELETE("/:assignmentId", m.handler.DeleteAssignment)
@@ -36,6 +37,7 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
     {
         student.GET("/lessons/:lessonId/assignments", m.handler.GetMyAssignments)
 		student.GET("/submissions", m.handler.GetMySubmissions)
+		student.GET("/submissions/summary", m.handler.GetMySubmissionSummary)
 		student.POST("/assignments/:assignmentId/submit", m.handler.SubmitAssignment)
     }
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/middleware"
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/response"
 	"github.com/YarKhan02/MahirLearningEngine/internal/constant"
+	"github.com/YarKhan02/MahirLearningEngine/internal/pagination"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -109,7 +110,9 @@ func (h *Handler) GetStudentRecords(c *gin.Context) {
 		return
 	}
 
-	records, err := h.svc.GetStudentRecords(c.Request.Context(), studentIDU)
+	p := pagination.Parse(c.Query("page"), c.Query("pageSize"), 20, 100)
+
+	records, total, err := h.svc.GetStudentRecords(c.Request.Context(), studentIDU, p.Limit(), p.Offset())
 	if err != nil {
 		response.WriteInternal(c, err)
 		return
@@ -120,7 +123,25 @@ func (h *Handler) GetStudentRecords(c *gin.Context) {
 		resp = append(resp, ToAttendanceRecordResponse(rec))
 	}
 
-	response.WriteJSON(c, http.StatusOK, resp)
+	response.WriteJSON(c, http.StatusOK, pagination.NewPage(resp, total, p))
+}
+
+// GetStudentSummary returns a student's overall attendance stats (admin view).
+func (h *Handler) GetStudentSummary(c *gin.Context) {
+
+	studentIDU, err := uuid.Parse(c.Param("studentId"))
+	if err != nil {
+		response.WriteError(c, http.StatusBadRequest, "invalid student id")
+		return
+	}
+
+	summary, err := h.svc.GetStudentSummary(c.Request.Context(), studentIDU)
+	if err != nil {
+		response.WriteInternal(c, err)
+		return
+	}
+
+	response.WriteJSON(c, http.StatusOK, ToAttendanceSummaryResponse(summary))
 }
 
 func (h *Handler) GetMyRecords(c *gin.Context) {
@@ -131,7 +152,9 @@ func (h *Handler) GetMyRecords(c *gin.Context) {
 		return
 	}
 
-	records, err := h.svc.GetMyRecords(c.Request.Context(), userID)
+	p := pagination.Parse(c.Query("page"), c.Query("pageSize"), 20, 100)
+
+	records, total, err := h.svc.GetMyRecords(c.Request.Context(), userID, p.Limit(), p.Offset())
 	if err != nil {
 		if errors.Is(err, ErrStudentNotFound) {
 			response.WriteError(c, http.StatusNotFound, "student profile not found")
@@ -146,5 +169,27 @@ func (h *Handler) GetMyRecords(c *gin.Context) {
 		resp = append(resp, ToAttendanceRecordResponse(rec))
 	}
 
-	response.WriteJSON(c, http.StatusOK, resp)
+	response.WriteJSON(c, http.StatusOK, pagination.NewPage(resp, total, p))
+}
+
+// GetMySummary returns the logged-in student's overall attendance stats.
+func (h *Handler) GetMySummary(c *gin.Context) {
+
+	userID, ok := middleware.CurrentUserID(c)
+	if !ok {
+		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	summary, err := h.svc.GetMySummary(c.Request.Context(), userID)
+	if err != nil {
+		if errors.Is(err, ErrStudentNotFound) {
+			response.WriteError(c, http.StatusNotFound, "student profile not found")
+			return
+		}
+		response.WriteInternal(c, err)
+		return
+	}
+
+	response.WriteJSON(c, http.StatusOK, ToAttendanceSummaryResponse(summary))
 }

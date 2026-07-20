@@ -41,6 +41,12 @@ type SubmissionResponse struct {
 	SubmittedAt	string	`json:"submittedAt"`
 }
 
+type SubmissionSummaryResponse struct {
+	Total     int `json:"total"`
+	Submitted int `json:"submitted"`
+	Graded    int `json:"graded"`
+}
+
 type BatchSubmissionResponse struct {
 	ID				string	`json:"id"`
 	Code			string	`json:"code"`

@@ -21,4 +21,6 @@ JOIN assignments a ON a.id = sub.assignment_id
 JOIN lesson l ON l.id = a.lesson_id
 JOIN course c ON c.id = l.course_id
 WHERE sub.student_id = $1
-ORDER BY sub.submitted_at DESC
+  AND ($2 = '' OR sub.status = $2)
+ORDER BY sub.submitted_at DESC, sub.id DESC
+LIMIT $3 OFFSET $4

@@ -12,9 +12,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// RequestLogger emits exactly one structured access-log line per request and
-// seeds a request-scoped logger (request_id + client_ip) into the context so
-// every downstream log line is correlated. CORS preflights are skipped as noise.
 func RequestLogger(logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Method == http.MethodOptions {
@@ -38,6 +35,13 @@ func RequestLogger(logger *zap.Logger) gin.HandlerFunc {
 		path := c.FullPath()
 		if path == "" {
 			path = c.Request.URL.Path
+		}
+
+		if status := c.Writer.Status(); status < 400 {
+			switch path {
+				case "/metrics", "/health", "/ready", "/live":
+					return
+			}
 		}
 
 		status := c.Writer.Status()

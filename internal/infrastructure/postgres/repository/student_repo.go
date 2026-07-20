@@ -19,6 +19,9 @@ var studentCreateSQL string
 //go:embed sql/student_batch_enroll.sql
 var studentBatchEnrollSQL string
 
+//go:embed sql/student_count.sql
+var studentCountSQL string
+
 //go:embed sql/student_get_all.sql
 var studentGetAllSQL string
 
@@ -100,8 +103,16 @@ func (r *StudentRepository) RegisterStudent(ctx context.Context, s *student.Stud
 	return tx.Commit()
 }
 
-func (r *StudentRepository) GetStudents(ctx context.Context, q string) ([]student.StudentWithBatch, error) {
-	rows, err := r.db.QueryContext(ctx, studentGetAllSQL, q)
+func (r *StudentRepository) CountStudents(ctx context.Context, q string) (int, error) {
+	var total int
+	if err := r.db.QueryRowContext(ctx, studentCountSQL, q).Scan(&total); err != nil {
+		return 0, fmt.Errorf("count students: %w", err)
+	}
+	return total, nil
+}
+
+func (r *StudentRepository) GetStudents(ctx context.Context, q string, limit, offset int) ([]student.StudentWithBatch, error) {
+	rows, err := r.db.QueryContext(ctx, studentGetAllSQL, q, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("get students: %w", err)
 	}

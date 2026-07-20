@@ -27,16 +27,24 @@ func (s *Service) RegisterStudent(ctx context.Context, req *Student, batchID uui
 	return s.repo.RegisterStudent(ctx, req, batchID)
 }
 
-func (s *Service) GetStudents(ctx context.Context, q string) ([]StudentWithBatch, error) {
-	return s.repo.GetStudents(ctx, q)
+func (s *Service) GetStudents(ctx context.Context, q string, limit, offset int) ([]StudentWithBatch, int, error) {
+	total, err := s.repo.CountStudents(ctx, q)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	items, err := s.repo.GetStudents(ctx, q, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return items, total, nil
 }
 
 func (s *Service) GetStudentByID(ctx context.Context, id uuid.UUID) (*Student, error) {
 	return s.repo.GetStudentByID(ctx, id)
 }
 
-// GetProfileByUserID resolves the student record behind a login account,
-// so the portal can show the student's real name and contact email.
 func (s *Service) GetProfileByUserID(ctx context.Context, userID uuid.UUID) (*Student, error) {
 	studentID, err := s.repo.GetStudentIDByUserID(ctx, userID)
 	if err != nil {
@@ -69,7 +77,6 @@ func (s *Service) GetStudentCourses(ctx context.Context, userID uuid.UUID) ([]St
 	return s.repo.GetStudentCourses(ctx, userID)
 }
 
-// GetStudentLessons returns the lessons of a course the student has access to.
 func (s *Service) GetStudentLessons(ctx context.Context, userID uuid.UUID, courseID uuid.UUID) ([]StudentLesson, error) {
 	studentID, err := s.repo.GetStudentIDByUserID(ctx, userID)
 	if err != nil {
