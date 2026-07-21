@@ -12,7 +12,7 @@ func ToNewQuiz(req CreateQuizRequest, lessonID uuid.UUID) NewQuiz {
 	for _, q := range req.Questions {
 		opts := make([]NewOption, 0, len(q.Options))
 		for _, o := range q.Options {
-			opts = append(opts, NewOption{Text: o.Text, IsCorrect: o.IsCorrect})
+			opts = append(opts, NewOption(o))
 		}
 		questions = append(questions, NewQuestion{
 			Prompt:        q.Prompt,
@@ -117,7 +117,7 @@ func ToAdminQuizResponse(q Quiz, submissionCount, pendingCount int) AdminQuizRes
 func ToStudentQuizResponse(sq StudentQuiz) StudentQuizResponse {
 	resp := StudentQuizResponse{QuizResponse: ToQuizResponse(sq.Quiz, false)}
 	if sq.Submission != nil {
-		resp.Submission = toStudentSubmissionResponse(*sq.Submission, sq.Quiz.TotalMarks())
+		resp.Submission = toStudentSubmissionResponse(*sq.Submission, sq.TotalMarks())
 	}
 	return resp
 }
