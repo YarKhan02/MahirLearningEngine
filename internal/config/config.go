@@ -26,6 +26,11 @@ type Config struct {
 	TempPassword	  	string
 	PrometheusUsername	string
 	PrometheusPassword	string
+	AccountID			string
+	AccessKey			string
+	SecretKey			string
+	Bucket				string
+	APIEndpoint			string
 }
 
 func Load() (*Config, error) {
@@ -48,6 +53,11 @@ func Load() (*Config, error) {
 		TempPassword: 		getEnv("TEMP_PASSWORD"),
 		PrometheusUsername: getEnv("PROMETHEUS_USERNAME"),
 		PrometheusPassword: getEnv("PROMETHEUS_PASSWORD"),
+		AccountID:			getEnv("ACCOUNT_ID"),
+		AccessKey:			getEnv("ACCESS_KEY"),
+		SecretKey:			getEnv("SECRET_ACCESS_KEY"),
+		Bucket: 			getEnv("BUCKET"),
+		APIEndpoint:		getEnv("API_ENDPOINT"),
 	}
 
 	limitStr := getEnv("RATE_LIMIT_REQUESTS")

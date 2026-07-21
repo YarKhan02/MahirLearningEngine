@@ -40,10 +40,7 @@ type StudentCourse struct {
 type StudentLesson struct {
 	ID          uuid.UUID
 	Title       string
-	Description string
 	OrderNo     int
-	YoutubeURL  string
-	Content     string
 	Completed   bool
 	CompletedAt *time.Time
 }

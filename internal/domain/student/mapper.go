@@ -60,13 +60,10 @@ func ToStudentCourseResponse(req StudentCourse) StudentCourseResponse {
 
 func ToStudentLessonResponse(req StudentLesson) StudentLessonResponse {
 	resp := StudentLessonResponse{
-		ID:          req.ID.String(),
-		Title:       req.Title,
-		Description: req.Description,
-		OrderNo:     req.OrderNo,
-		YoutubeURL:  req.YoutubeURL,
-		Content:     req.Content,
-		Completed:   req.Completed,
+		ID:        req.ID.String(),
+		Title:     req.Title,
+		OrderNo:   req.OrderNo,
+		Completed: req.Completed,
 	}
 
 	if req.CompletedAt != nil {
