@@ -1,0 +1,1 @@
+SELECT EXISTS(SELECT 1 FROM quizzes WHERE id = $1)
