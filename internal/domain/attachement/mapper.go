@@ -7,13 +7,7 @@ import (
 )
 
 func ToPresignRequestEntity(req PresignRequest) Presign {
-	return Presign{
-		Filename:     req.Filename,
-		ContentType:  req.ContentType,
-		SizeBytes:    req.SizeBytes,
-		ResourceType: req.ResourceType,
-		ResourceID:   req.ResourceID,
-	}
+	return Presign(req)
 }
 
 func ToPresignResponseDTO(resp *PresignURL) *PresignResponse {

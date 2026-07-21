@@ -17,29 +17,23 @@ type Client struct {
 }
 
 func New(ctx context.Context, endpoint, accessKey, secretKey, bucket string) (*Client, error) {
-	resolver := aws.EndpointResolverWithOptionsFunc(
-        func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-            return aws.Endpoint{
-                URL: endpoint,
-            }, nil
-        })
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
+		config.WithRegion("auto"),
+	)
+	if err != nil {
+		return nil, err
+	}
 
-    cfg, err := config.LoadDefaultConfig(ctx,
-        config.WithEndpointResolverWithOptions(resolver),
-        config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
-        config.WithRegion("auto"),
-    )
-    if err != nil {
-        return nil, err
-    }
+	s3Client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(endpoint)
+	})
 
-    s3Client := s3.NewFromConfig(cfg)
-
-    return &Client{
-        S3:      s3Client,
-        Presign: s3.NewPresignClient(s3Client),
-        Bucket:  bucket,
-    }, nil
+	return &Client{
+		S3:      s3Client,
+		Presign: s3.NewPresignClient(s3Client),
+		Bucket:  bucket,
+	}, nil
 }
 
 func (c *Client) PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error) {
