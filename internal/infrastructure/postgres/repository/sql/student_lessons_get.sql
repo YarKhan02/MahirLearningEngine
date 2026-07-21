@@ -1,10 +1,7 @@
 SELECT
     l.id,
     l.title,
-    COALESCE(l.description, ''),
     l.order_no,
-    COALESCE(l.youtube_url, ''),
-    COALESCE(l.content, ''),
     COALESCE(lp.completed, FALSE) AS completed,
     lp.completed_at
 FROM lesson l

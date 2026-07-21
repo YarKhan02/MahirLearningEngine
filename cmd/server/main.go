@@ -23,12 +23,15 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/timetable"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/attachement"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/topic"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/crypto"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/logging"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/metrics"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/postgres/migrations"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/postgres/repository"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
+	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/r2"
 
 	"go.uber.org/zap"
 )
@@ -97,11 +100,19 @@ func run() error {
 		}
 	}
 
+	r2Client, err := r2.New(ctx, cfg.APIEndpoint, cfg.AccessKey, cfg.SecretKey, cfg.Bucket)
+	if err != nil {
+		return fmt.Errorf("failed to initialise r2")
+	}
+
 	// Secure cookies (SameSite=None) only work over HTTPS; in local HTTP dev we
 	// must fall back to a plain SameSite=Lax cookie or the browser drops it.
 	secureCookies := !strings.EqualFold(cfg.Env, "development")
 
 	roleRepo := repository.NewRoleRepository(db)
+
+	attachementRepo := repository.NewAttachementRepository(db)
+	attachementSvc := attachement.NewService(attachementRepo, r2Client)
 
 	announcementRepo := repository.NewAnnouncementRepository(db)
 	announcementCache := announcement.NewCachedRepository(announcementRepo, redisClient)
@@ -110,6 +121,9 @@ func run() error {
 	courseRepo := repository.NewCourseRepository(db)
 	courseCache := course.NewCachedRepository(courseRepo, redisClient)
 	courseSvc := course.NewService(courseCache)
+
+	topicRepo := repository.NewTopicRepository(db)
+	topicSvc := topic.NewService(topicRepo)
 
 	batchRepo := repository.NewBatchRepository(db)
 	batchCache := batch.NewCachedRepository(batchRepo, redisClient)
@@ -142,6 +156,7 @@ func run() error {
 	module := []api.Module{
 		user.NewModule(userSvc, studentSvc, tokenSvc, redisClient, secureCookies),
 		course.NewModule(courseSvc, tokenSvc, redisClient),
+		topic.NewModule(topicSvc, tokenSvc, redisClient),
 		batch.NewModule(batchSvc, tokenSvc, redisClient),
 		student.NewModule(studentSvc, userSvc, tokenSvc, redisClient, cfg.TempPassword),
 		assignment.NewModule(assignmentSvc, tokenSvc, redisClient),
@@ -149,6 +164,7 @@ func run() error {
 		dashboard.NewModule(dashboardSvc, tokenSvc, redisClient),
 		timetable.NewModule(timetableSvc, tokenSvc, redisClient),
 		announcement.NewModule(announcementSvc, tokenSvc, redisClient),
+		attachement.NewModule(attachementSvc, tokenSvc, redisClient),
 	}
 
 	srv := api.NewServer(cfg.AllowedOrigin, cfg.Addr, module, logger, cfg.RateLimitRequests, cfg.RateLimitWindow, cfg.PrometheusUsername, cfg.PrometheusPassword)

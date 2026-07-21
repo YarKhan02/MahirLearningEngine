@@ -15,17 +15,11 @@ type Lesson struct {
 	ID			uuid.UUID
 	CourseID	uuid.UUID
 	Title 		string
-	Description string
 	OrderNo		int
-	YoutubeURL 	string
-	Content		string
 }
 
 type UpdateLesson struct {
 	ID			uuid.UUID
 	CourseID	uuid.UUID
 	Title 		*string
-	Description *string
-	YoutubeURL 	*string
-	Content		*string
 }

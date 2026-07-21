@@ -13,10 +13,7 @@ type InsertLesson struct {
 	ID			uuid.UUID	`json:"id"`
 	CourseID	uuid.UUID	`json:"courseId"`
 	Title 		string 		`json:"title"`
-	Description string 		`json:"description,omitempty"`
 	OrderNo		int			`json:"orderNo"`
-	YoutubeURL 	string		`json:"youtubeUrl,omitempty"`
-	Content		string		`json:"content,omitempty"`
 }
 
 type UpdateLessonOrderRequest struct {
@@ -27,9 +24,6 @@ type UpdateLessonRequest struct {
 	ID			uuid.UUID	`json:"id"`
 	CourseID	uuid.UUID	`json:"courseId"`
 	Title 		*string 	`json:"title,omitempty"`
-	Description *string 	`json:"description,omitempty"`
-	YoutubeURL 	*string		`json:"youtubeUrl,omitempty"`
-	Content		*string		`json:"content,omitempty"`
 }
 
 type CourseResponse struct {
@@ -44,8 +38,5 @@ type CourseResponse struct {
 type LessonResponse struct {
 	ID			string		`json:"id"`
 	Title 		string		`json:"title"`
-	Description string		`json:"description"`
 	OrderNo		int			`json:"orderNo"`
-	YoutubeURL 	string		`json:"youtubeUrl"`
-	Content		string		`json:"content"`
 }

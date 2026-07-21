@@ -55,10 +55,7 @@ type StudentCourseResponse struct {
 type StudentLessonResponse struct {
 	ID			string	`json:"id"`
 	Title		string	`json:"title"`
-	Description	string	`json:"description"`
 	OrderNo		int		`json:"orderNo"`
-	YoutubeURL	string	`json:"youtubeUrl"`
-	Content		string	`json:"content"`
 	Completed	bool	`json:"completed"`
 	CompletedAt	string	`json:"completedAt,omitempty"`
 }

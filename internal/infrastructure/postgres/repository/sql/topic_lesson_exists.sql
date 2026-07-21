@@ -1,0 +1,1 @@
+SELECT EXISTS(SELECT 1 FROM lesson WHERE id = $1)

@@ -31,12 +31,9 @@ func ToLesson(dto InsertLesson) Lesson {
 
 func ToLessonResponse(lesson Lesson) LessonResponse {
 	return LessonResponse{
-		ID:          lesson.ID.String(),
-		Title:       lesson.Title,
-		Description: lesson.Description,
-		OrderNo:     lesson.OrderNo,
-		YoutubeURL:  lesson.YoutubeURL,
-		Content:     lesson.Content,
+		ID:      lesson.ID.String(),
+		Title:   lesson.Title,
+		OrderNo: lesson.OrderNo,
 	}
 }
 

@@ -180,10 +180,7 @@ func (r *CoursRepository) InsertLesson(ctx context.Context, req course.Lesson) e
 		req.ID,
 		req.CourseID,
 		req.Title,
-		req.Description,
 		req.OrderNo,
-		req.YoutubeURL,
-		req.Content,
 	)
 
 	if err != nil {
@@ -207,10 +204,7 @@ func (r *CoursRepository) GetLesson(ctx context.Context, id uuid.UUID) ([]course
 		err := rows.Scan(
 			&c.ID,
 			&c.Title,
-			&c.Description,
 			&c.OrderNo,
-			&c.YoutubeURL,
-			&c.Content,
 		)
 		if err != nil {
 			return nil, err
@@ -245,24 +239,6 @@ func (r *CoursRepository) UpdateLesson(ctx context.Context, req course.UpdateLes
 	if req.Title != nil {
 		query += fmt.Sprintf("title = $%d,", idx)
 		args = append(args, *req.Title)
-		idx++
-	}
-
-	if req.Description != nil {
-		query += fmt.Sprintf("description = $%d,", idx)
-		args = append(args, *req.Description)
-		idx++
-	}
-
-	if req.YoutubeURL != nil {
-		query += fmt.Sprintf("youtube_url = $%d,", idx)
-		args = append(args, *req.YoutubeURL)
-		idx++
-	}
-
-	if req.Content != nil {
-		query += fmt.Sprintf("content = $%d,", idx)
-		args = append(args, *req.Content)
 		idx++
 	}
 

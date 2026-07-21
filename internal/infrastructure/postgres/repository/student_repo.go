@@ -278,10 +278,7 @@ func (r *StudentRepository) GetStudentLessons(ctx context.Context, courseID uuid
 		if err := rows.Scan(
 			&l.ID,
 			&l.Title,
-			&l.Description,
 			&l.OrderNo,
-			&l.YoutubeURL,
-			&l.Content,
 			&l.Completed,
 			&l.CompletedAt,
 		); err != nil {
