@@ -2,6 +2,8 @@ package r2
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -36,15 +38,36 @@ func New(ctx context.Context, endpoint, accessKey, secretKey, bucket string) (*C
 	}, nil
 }
 
-func (c *Client) PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error) {
-	req, err := c.Presign.PresignGetObject(ctx, &s3.GetObjectInput{
+func (c *Client) PresignGet(ctx context.Context, key string, ttl time.Duration, contentType, disposition string) (string, error) {
+	in := &s3.GetObjectInput{
 		Bucket: aws.String(c.Bucket),
 		Key:    aws.String(key),
-	}, s3.WithPresignExpires(ttl))
+	}
+	if contentType != "" {
+		in.ResponseContentType = aws.String(contentType)
+	}
+	if disposition != "" {
+		in.ResponseContentDisposition = aws.String(disposition)
+	}
+
+	req, err := c.Presign.PresignGetObject(ctx, in, s3.WithPresignExpires(ttl))
 	if err != nil {
 		return "", err
 	}
 	return req.URL, nil
+}
+
+func (c *Client) ReadHeader(ctx context.Context, key string, n int64) ([]byte, error) {
+	out, err := c.S3.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(c.Bucket),
+		Key:    aws.String(key),
+		Range:  aws.String(fmt.Sprintf("bytes=0-%d", n-1)),
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = out.Body.Close() }()
+	return io.ReadAll(out.Body)
 }
 
 func (c *Client) DeleteObject(ctx context.Context, key string) error {

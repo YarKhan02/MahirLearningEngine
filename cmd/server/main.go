@@ -123,7 +123,8 @@ func run() error {
 	courseSvc := course.NewService(courseCache)
 
 	topicRepo := repository.NewTopicRepository(db)
-	topicSvc := topic.NewService(topicRepo)
+	topicCache := topic.NewCachedRepository(topicRepo, redisClient)
+	topicSvc := topic.NewService(topicCache)
 
 	batchRepo := repository.NewBatchRepository(db)
 	batchCache := batch.NewCachedRepository(batchRepo, redisClient)

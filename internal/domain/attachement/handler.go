@@ -77,6 +77,8 @@ func (h *Handler) ConfirmUpload(c *gin.Context) {
 			response.WriteError(c, http.StatusNotFound, "upload not found")
 		case errors.Is(err, ErrFailed):
 			response.WriteError(c, http.StatusBadRequest, "file too large")
+		case errors.Is(err, ErrUnsupportedContent):
+			response.WriteError(c, http.StatusBadRequest, "file content is not an allowed type")
 		default:
 			response.WriteInternal(c, err)
 		}
