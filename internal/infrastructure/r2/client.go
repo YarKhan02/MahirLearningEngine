@@ -66,7 +66,7 @@ func (c *Client) ReadHeader(ctx context.Context, key string, n int64) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
-	defer out.Body.Close()
+	defer func() { _ = out.Body.Close() }()
 	return io.ReadAll(out.Body)
 }
 
