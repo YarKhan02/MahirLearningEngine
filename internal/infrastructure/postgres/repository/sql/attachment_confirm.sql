@@ -1,7 +1,8 @@
 UPDATE attachments
 SET status = 'confirmed',
     confirmed_at = NOW(),
-    size_bytes = $3
+    size_bytes = $3,
+    verified_content_type = $4
 WHERE r2_key = $1
   AND uploaded_by = $2
   AND deleted_at IS NULL

@@ -8,6 +8,7 @@ import (
 
 type Repository interface {
 	LessonExists(ctx context.Context, lessonID uuid.UUID) (bool, error)
+	GetTopicLessonID(ctx context.Context, topicID uuid.UUID) (uuid.UUID, error)
 	InsertTopic(ctx context.Context, t Topic) error
 	GetTopicsByLesson(ctx context.Context, lessonID uuid.UUID) ([]Topic, error)
 	TopicExists(ctx context.Context, id uuid.UUID) (bool, error)

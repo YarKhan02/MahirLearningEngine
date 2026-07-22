@@ -28,11 +28,12 @@ type Attachment struct {
 	SizeBytes    *int64
 	ResourceType string
 	ResourceID   string
-	UploadedBy   uuid.UUID
-	Status       string
-	CreatedAt    time.Time
-	ConfirmedAt  *time.Time
-	DeletedAt    *time.Time
+	UploadedBy          uuid.UUID
+	Status              string
+	VerifiedContentType string
+	CreatedAt           time.Time
+	ConfirmedAt         *time.Time
+	DeletedAt           *time.Time
 
 	DownloadURL string
 }

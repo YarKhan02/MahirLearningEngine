@@ -5,21 +5,23 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/logging"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/r2"
-	
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 var (
-	ErrForbidden = errors.New("forbidden")
-	ErrFailed    = errors.New("failed to presign")
-	ErrNotFound  = errors.New("object not found")
+	ErrForbidden          = errors.New("forbidden")
+	ErrFailed             = errors.New("failed to presign")
+	ErrNotFound           = errors.New("object not found")
+	ErrUnsupportedContent = errors.New("file content does not match an allowed type")
 )
 
 const ResourceTypeCourse = "course"
@@ -46,7 +48,21 @@ func (s *Service) PresignUpload(ctx context.Context, userID uuid.UUID, req Presi
 		return nil, ErrFailed
 	}
 
-	ext := filepath.Ext(req.Filename)
+	ext, ok := ExtByType[req.ContentType]
+	if !ok {
+		return nil, ErrFailed
+	}
+
+	exists, err := s.repo.CourseExists(ctx, req.ResourceID)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, ErrFailed
+	}
+
+	req.Filename = sanitizeFilename(req.Filename)
+
 	key := fmt.Sprintf("%s/%s/%s%s", req.ResourceType, req.ResourceID, uuid.New().String(), ext)
 
 	presigned, err := s.r2.Presign.PresignPutObject(ctx, &s3.PutObjectInput{
@@ -85,6 +101,11 @@ func (s *Service) PresignUpload(ctx context.Context, userID uuid.UUID, req Presi
 func (s *Service) ConfirmUpload(ctx context.Context, userID uuid.UUID, key string) (*Attachment, error) {
 	log := logging.FromLogger(ctx)
 
+	pending, err := s.repo.GetPendingByKey(ctx, key, userID)
+	if err != nil {
+		return nil, err // ErrNotFound when there's no matching pending upload
+	}
+
 	head, err := s.r2.S3.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(s.r2.Bucket),
 		Key:    aws.String(key),
@@ -104,13 +125,7 @@ func (s *Service) ConfirmUpload(ctx context.Context, userID uuid.UUID, key strin
 	}
 
 	if size > MaxUploadSize {
-		if delErr := s.r2.DeleteObject(ctx, key); delErr != nil {
-			log.Warn("failed to delete oversized object",
-				zap.String("event", "material_r2_delete_failed"),
-				zap.String("r2_key", key),
-				zap.Error(delErr),
-			)
-		}
+		s.deleteObject(ctx, key, "material_r2_delete_failed")
 		log.Warn("confirm upload: rejected oversized file",
 			zap.String("event", "material_rejected_oversize"),
 			zap.String("uploaded_by", userID.String()),
@@ -120,7 +135,30 @@ func (s *Service) ConfirmUpload(ctx context.Context, userID uuid.UUID, key strin
 		return nil, ErrFailed
 	}
 
-	a, err := s.repo.ConfirmByKey(ctx, key, userID, size)
+	// Verify the real bytes, not the client-declared content type.
+	header, err := s.r2.ReadHeader(ctx, key, HeaderSniffBytes)
+	if err != nil {
+		log.Error("confirm upload: failed to read object header",
+			zap.String("event", "material_sniff_failed"),
+			zap.String("r2_key", key),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+	detected := mimetype.Detect(header)
+	if !verifyDetectedType(detected, pending.ContentType) {
+		s.deleteObject(ctx, key, "material_r2_delete_failed")
+		log.Warn("confirm upload: content type mismatch",
+			zap.String("event", "material_content_mismatch"),
+			zap.String("declared", pending.ContentType),
+			zap.String("detected", detected.String()),
+			zap.String("uploaded_by", userID.String()),
+			zap.String("r2_key", key),
+		)
+		return nil, ErrUnsupportedContent
+	}
+
+	a, err := s.repo.ConfirmByKey(ctx, key, userID, size, detected.String())
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +169,7 @@ func (s *Service) ConfirmUpload(ctx context.Context, userID uuid.UUID, key strin
 		zap.String("resource_id", a.ResourceID),
 		zap.String("uploaded_by", userID.String()),
 		zap.String("content_type", a.ContentType),
+		zap.String("verified_content_type", detected.String()),
 		zap.Int64("size_bytes", size),
 	)
 
@@ -143,8 +182,16 @@ func (s *Service) ListCourseMaterials(ctx context.Context, courseID string) ([]A
 		return nil, err
 	}
 
+	ttl := time.Duration(DownloadURLTTL) * time.Second
 	for i := range items {
-		url, err := s.r2.PresignGet(ctx, items[i].Key, time.Duration(DownloadURLTTL)*time.Second)
+		ct := items[i].ContentType
+
+		disposition := ""
+		if OfficeTypes[ct] {
+			disposition = fmt.Sprintf("attachment; filename=%q", items[i].Filename)
+		}
+
+		url, err := s.r2.PresignGet(ctx, items[i].Key, ttl, ct, disposition)
 		if err != nil {
 			logging.FromLogger(ctx).Error("failed to presign download url",
 				zap.String("event", "material_download_presign_failed"),
@@ -183,14 +230,7 @@ func (s *Service) DeleteMaterial(ctx context.Context, id uuid.UUID) error {
 		return err
 	}
 
-	if delErr := s.r2.DeleteObject(ctx, a.Key); delErr != nil {
-		log.Warn("failed to delete object from bucket",
-			zap.String("event", "material_r2_delete_failed"),
-			zap.String("attachment_id", a.ID.String()),
-			zap.String("r2_key", a.Key),
-			zap.Error(delErr),
-		)
-	}
+	s.deleteObject(ctx, a.Key, "material_r2_delete_failed")
 
 	if err := s.repo.SoftDelete(ctx, id); err != nil {
 		return err
@@ -204,4 +244,47 @@ func (s *Service) DeleteMaterial(ctx context.Context, id uuid.UUID) error {
 	)
 
 	return nil
+}
+
+func (s *Service) deleteObject(ctx context.Context, key, event string) {
+	if err := s.r2.DeleteObject(ctx, key); err != nil {
+		logging.FromLogger(ctx).Warn("failed to delete object from bucket",
+			zap.String("event", event),
+			zap.String("r2_key", key),
+			zap.Error(err),
+		)
+	}
+}
+
+func sanitizeFilename(name string) string {
+	name = filepath.Base(name)
+	name = strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return -1
+		}
+		return r
+	}, name)
+	name = strings.TrimSpace(name)
+	if name == "" || name == "." || name == ".." {
+		name = "file"
+	}
+	if len(name) > MaxFileNameLen {
+		name = name[:MaxFileNameLen]
+	}
+	return name
+}
+
+func verifyDetectedType(detected *mimetype.MIME, declared string) bool {
+	for m := detected; m != nil; m = m.Parent() {
+		if AllowedTypes[m.String()] {
+			return true
+		}
+	}
+	if OfficeTypes[declared] {
+		switch detected.String() {
+		case "application/zip", "application/x-ole-storage":
+			return true
+		}
+	}
+	return false
 }

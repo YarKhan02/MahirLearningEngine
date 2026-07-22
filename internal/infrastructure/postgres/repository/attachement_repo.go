@@ -29,6 +29,12 @@ var attachmentSoftDeleteSQL string
 //go:embed sql/attachment_course_access.sql
 var attachmentCourseAccessSQL string
 
+//go:embed sql/attachment_course_exists.sql
+var attachmentCourseExistsSQL string
+
+//go:embed sql/attachment_pending_by_key.sql
+var attachmentPendingByKeySQL string
+
 type AttachementRepository struct {
 	db *sql.DB
 }
@@ -53,8 +59,20 @@ func (r *AttachementRepository) Create(ctx context.Context, a attachement.Attach
 	return nil
 }
 
-func (r *AttachementRepository) ConfirmByKey(ctx context.Context, key string, uploadedBy uuid.UUID, sizeBytes int64) (attachement.Attachment, error) {
-	row := r.db.QueryRowContext(ctx, attachmentConfirmSQL, key, uploadedBy, sizeBytes)
+func (r *AttachementRepository) GetPendingByKey(ctx context.Context, key string, uploadedBy uuid.UUID) (attachement.Attachment, error) {
+	row := r.db.QueryRowContext(ctx, attachmentPendingByKeySQL, key, uploadedBy)
+	a, err := scanAttachment(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return attachement.Attachment{}, attachement.ErrNotFound
+		}
+		return attachement.Attachment{}, fmt.Errorf("pending attachment: %w", err)
+	}
+	return a, nil
+}
+
+func (r *AttachementRepository) ConfirmByKey(ctx context.Context, key string, uploadedBy uuid.UUID, sizeBytes int64, verifiedContentType string) (attachement.Attachment, error) {
+	row := r.db.QueryRowContext(ctx, attachmentConfirmSQL, key, uploadedBy, sizeBytes, verifiedContentType)
 	a, err := scanAttachment(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -63,6 +81,14 @@ func (r *AttachementRepository) ConfirmByKey(ctx context.Context, key string, up
 		return attachement.Attachment{}, fmt.Errorf("confirm attachment: %w", err)
 	}
 	return a, nil
+}
+
+func (r *AttachementRepository) CourseExists(ctx context.Context, courseID string) (bool, error) {
+	var exists bool
+	if err := r.db.QueryRowContext(ctx, attachmentCourseExistsSQL, courseID).Scan(&exists); err != nil {
+		return false, fmt.Errorf("course exists: %w", err)
+	}
+	return exists, nil
 }
 
 func (r *AttachementRepository) ListByResource(ctx context.Context, resourceType, resourceID string) ([]attachement.Attachment, error) {

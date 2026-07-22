@@ -24,6 +24,9 @@ var topicExistsSQL string
 //go:embed sql/topic_lesson_exists.sql
 var topicLessonExistsSQL string
 
+//go:embed sql/topic_lesson_id.sql
+var topicLessonIDSQL string
+
 //go:embed sql/topic_update.sql
 var topicUpdateSQL string
 
@@ -62,6 +65,14 @@ func (r *TopicRepository) LessonExists(ctx context.Context, lessonID uuid.UUID) 
 		return false, fmt.Errorf("lesson exists: %w", err)
 	}
 	return exists, nil
+}
+
+func (r *TopicRepository) GetTopicLessonID(ctx context.Context, topicID uuid.UUID) (uuid.UUID, error) {
+	var lessonID uuid.UUID
+	if err := r.db.QueryRowContext(ctx, topicLessonIDSQL, topicID).Scan(&lessonID); err != nil {
+		return uuid.Nil, fmt.Errorf("topic lesson id: %w", err)
+	}
+	return lessonID, nil
 }
 
 func (r *TopicRepository) InsertTopic(ctx context.Context, t topic.Topic) error {
