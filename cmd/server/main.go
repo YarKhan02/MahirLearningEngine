@@ -24,6 +24,7 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/attachement"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/liveclass"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/program"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/quiz"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/topic"
@@ -35,6 +36,7 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/r2"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -136,6 +138,20 @@ func run() error {
 	programCache := program.NewCachedRepository(programRepo, redisClient)
 	programSvc := program.NewService(programCache)
 
+	liveClassRepo := repository.NewLiveClassRepository(db)
+	liveKit := liveclass.NewLiveKit(cfg.LiveKitURL, cfg.LiveKitHostURL, cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
+	liveClassSvc := liveclass.NewService(liveClassRepo, r2Client, redisClient, liveKit)
+	// Auto-end a class when the host has been disconnected past the grace period.
+	liveClassHub := liveclass.NewHub(func(sessionID, hostID uuid.UUID) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_, _ = liveClassSvc.EndSession(ctx, sessionID, hostID)
+	})
+	// WebSocket allowed origins (host[:port])
+	liveOriginPatterns := []string{
+		stripScheme(cfg.AllowedOrigin), "www.mahircodelab.com", "localhost:*", "127.0.0.1:*",
+	}
+
 	batchRepo := repository.NewBatchRepository(db)
 	batchCache := batch.NewCachedRepository(batchRepo, redisClient)
 	batchSvc := batch.NewService(batchCache)
@@ -170,6 +186,7 @@ func run() error {
 		topic.NewModule(topicSvc, tokenSvc, redisClient),
 		quiz.NewModule(quizSvc, tokenSvc, redisClient),
 		program.NewModule(programSvc, tokenSvc, redisClient),
+		liveclass.NewModule(liveClassSvc, tokenSvc, redisClient, liveClassHub, liveOriginPatterns),
 		batch.NewModule(batchSvc, tokenSvc, redisClient),
 		student.NewModule(studentSvc, userSvc, tokenSvc, redisClient, cfg.TempPassword),
 		assignment.NewModule(assignmentSvc, tokenSvc, redisClient),
@@ -189,4 +206,10 @@ func run() error {
 	}
 
 	return nil
+}
+
+func stripScheme(origin string) string {
+	origin = strings.TrimPrefix(origin, "https://")
+	origin = strings.TrimPrefix(origin, "http://")
+	return strings.TrimSuffix(origin, "/")
 }
