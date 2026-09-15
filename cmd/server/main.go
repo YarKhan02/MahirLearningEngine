@@ -24,6 +24,7 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/attachement"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/quiz"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/topic"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/crypto"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/logging"
@@ -126,6 +127,10 @@ func run() error {
 	topicCache := topic.NewCachedRepository(topicRepo, redisClient)
 	topicSvc := topic.NewService(topicCache)
 
+	quizRepo := repository.NewQuizRepository(db)
+	quizCache := quiz.NewCachedRepository(quizRepo, redisClient)
+	quizSvc := quiz.NewService(quizCache)
+
 	batchRepo := repository.NewBatchRepository(db)
 	batchCache := batch.NewCachedRepository(batchRepo, redisClient)
 	batchSvc := batch.NewService(batchCache)
@@ -158,6 +163,7 @@ func run() error {
 		user.NewModule(userSvc, studentSvc, tokenSvc, redisClient, secureCookies),
 		course.NewModule(courseSvc, tokenSvc, redisClient),
 		topic.NewModule(topicSvc, tokenSvc, redisClient),
+		quiz.NewModule(quizSvc, tokenSvc, redisClient),
 		batch.NewModule(batchSvc, tokenSvc, redisClient),
 		student.NewModule(studentSvc, userSvc, tokenSvc, redisClient, cfg.TempPassword),
 		assignment.NewModule(assignmentSvc, tokenSvc, redisClient),
