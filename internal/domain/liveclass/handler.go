@@ -352,7 +352,7 @@ func (h *Handler) SaveSnapshot(c *gin.Context) {
 		response.WriteError(c, http.StatusBadRequest, "invalid request payload")
 		return
 	}
-	w, err := h.svc.SaveSnapshot(c.Request.Context(), id, userID, SaveSnapshot{Scene: req.Scene, ImageURL: req.ImageURL})
+	w, err := h.svc.SaveSnapshot(c.Request.Context(), id, userID, SaveSnapshot(req))
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrInvalid):
