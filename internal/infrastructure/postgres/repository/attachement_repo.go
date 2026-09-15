@@ -35,6 +35,12 @@ var attachmentCourseExistsSQL string
 //go:embed sql/attachment_pending_by_key.sql
 var attachmentPendingByKeySQL string
 
+//go:embed sql/attachment_create_inline.sql
+var attachmentCreateInlineSQL string
+
+//go:embed sql/attachment_inline_by_id.sql
+var attachmentInlineByIDSQL string
+
 type AttachementRepository struct {
 	db *sql.DB
 }
@@ -89,6 +95,34 @@ func (r *AttachementRepository) CourseExists(ctx context.Context, courseID strin
 		return false, fmt.Errorf("course exists: %w", err)
 	}
 	return exists, nil
+}
+
+func (r *AttachementRepository) CreateInline(ctx context.Context, a attachement.Attachment) error {
+	var size any
+	if a.SizeBytes != nil {
+		size = *a.SizeBytes
+	}
+
+	_, err := r.db.ExecContext(ctx, attachmentCreateInlineSQL,
+		a.ID, a.Key, a.Filename, a.ContentType, size,
+		a.ResourceID, a.UploadedBy, a.VerifiedContentType,
+	)
+	if err != nil {
+		return fmt.Errorf("create inline attachment: %w", err)
+	}
+	return nil
+}
+
+func (r *AttachementRepository) GetInlineByID(ctx context.Context, id uuid.UUID) (string, string, error) {
+	var key, contentType string
+	err := r.db.QueryRowContext(ctx, attachmentInlineByIDSQL, id).Scan(&key, &contentType)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", "", attachement.ErrNotFound
+		}
+		return "", "", fmt.Errorf("inline attachment: %w", err)
+	}
+	return key, contentType, nil
 }
 
 func (r *AttachementRepository) ListByResource(ctx context.Context, resourceType, resourceID string) ([]attachement.Attachment, error) {

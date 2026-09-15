@@ -18,6 +18,10 @@ type PresignResponse struct {
 	ExpiresIn int    `json:"expires_in"`
 }
 
+type InlineUploadResponse struct {
+	ID string `json:"id"`
+}
+
 type AttachmentResponse struct {
 	ID          string `json:"id"`
 	FileName    string `json:"fileName"`

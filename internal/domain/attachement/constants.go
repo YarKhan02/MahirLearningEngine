@@ -32,3 +32,16 @@ var OfficeTypes = map[string]bool{
 const HeaderSniffBytes = 32 * 1024
 
 const MaxFileNameLen = 200
+
+// Inline content images (embedded inside topic rich-text). Images only, capped
+// smaller than course materials since they're received in-memory by the server.
+var InlineImageTypes = map[string]bool{
+	"image/png":  true,
+	"image/jpeg": true,
+	"image/webp": true,
+	"image/gif":  true,
+}
+
+const MaxInlineImageSize = 5 * 1024 * 1024 // 5MB
+
+const InlineURLTTL = 60 * 60 // seconds; TTL of the presigned URL the public route redirects to
