@@ -1,0 +1,3 @@
+ALTER TABLE live_sessions
+    ADD COLUMN title      TEXT NOT NULL DEFAULT '',
+    ADD COLUMN class_date DATE NOT NULL DEFAULT CURRENT_DATE;

@@ -31,6 +31,10 @@ type Config struct {
 	SecretKey			string
 	Bucket				string
 	APIEndpoint			string
+	LiveKitURL			string // ws(s):// URL clients connect to
+	LiveKitHostURL		string // http(s):// URL for server-side RoomService calls
+	LiveKitAPIKey		string
+	LiveKitAPISecret	string
 }
 
 func Load() (*Config, error) {
@@ -58,6 +62,10 @@ func Load() (*Config, error) {
 		SecretKey:			getEnv("SECRET_ACCESS_KEY"),
 		Bucket: 			getEnv("BUCKET"),
 		APIEndpoint:		getEnv("API_ENDPOINT"),
+		LiveKitURL:			getEnv("LIVEKIT_URL"),
+		LiveKitHostURL:		getEnv("LIVEKIT_HOST_URL"),
+		LiveKitAPIKey:		getEnv("LIVEKIT_API_KEY"),
+		LiveKitAPISecret:	getEnv("LIVEKIT_API_SECRET"),
 	}
 
 	limitStr := getEnv("RATE_LIMIT_REQUESTS")
