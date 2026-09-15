@@ -45,15 +45,25 @@ jobs:
           govulncheck ./... || true
           echo "------------------------------"
 
-          # Count findings that carry a non-empty fixed_version (i.e. a fix exists).
-          fixable=$(jq -s '[.[] | select(.finding.fixed_version != null and .finding.fixed_version != "")] | length' govulncheck.json)
+          # Fail only on findings that are BOTH:
+          #   1. fixable   — carry a non-empty fixed_version, and
+          #   2. called    — the trace reaches an actual symbol (a frame with a
+          #                  function), matching govulncheck's own "called" rule.
+          # Fixable advisories in transitive modules we require but never call are
+          # reported in the human log above and treated as warnings only.
+          fixable=$(jq -s '[.[]
+            | select(.finding)
+            | .finding
+            | select((.fixed_version // "") != "")
+            | select(any(.trace[]?; .function != null))
+          ] | length' govulncheck.json)
 
           if [ "$fixable" -gt 0 ]; then
-            echo "::error::$fixable vulnerability finding(s) have an available fix — upgrade the affected module."
+            echo "::error::$fixable called vulnerability finding(s) have an available fix — upgrade the affected module."
             exit 1
           fi
 
-          echo "No fixable vulnerabilities. Remaining advisories have no released fix and are treated as warnings."
+          echo "No fixable, called vulnerabilities. Remaining advisories are unfixable or in uncalled dependencies — treated as warnings."
 
       # SBOM — inventory of everything in the build
       - uses: anchore/sbom-action@v0
