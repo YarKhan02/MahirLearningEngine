@@ -1,6 +1,7 @@
 package attachement
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -244,6 +245,96 @@ func (s *Service) DeleteMaterial(ctx context.Context, id uuid.UUID) error {
 	)
 
 	return nil
+}
+
+// UploadInlineImage receives image bytes from an admin, verifies them by magic
+// bytes (image types only), stores them privately in R2, and returns the new
+// attachment id. The public GET /attachment/inline/:id route serves it. lessonID
+// is stored as the owning resource for traceability; it may be empty.
+func (s *Service) UploadInlineImage(ctx context.Context, userID uuid.UUID, lessonID, declaredType string, data []byte) (uuid.UUID, error) {
+	log := logging.FromLogger(ctx)
+
+	if len(data) == 0 || len(data) > MaxInlineImageSize {
+		return uuid.Nil, ErrFailed
+	}
+	if !InlineImageTypes[declaredType] {
+		return uuid.Nil, ErrUnsupportedContent
+	}
+
+	// Trust the bytes, not the declared type. Images sniff exactly, so require
+	// the detected type to be an allowed image.
+	detected := mimetype.Detect(data)
+	if !InlineImageTypes[detected.String()] {
+		log.Warn("inline image: content type mismatch",
+			zap.String("event", "inline_content_mismatch"),
+			zap.String("declared", declaredType),
+			zap.String("detected", detected.String()),
+			zap.String("uploaded_by", userID.String()),
+		)
+		return uuid.Nil, ErrUnsupportedContent
+	}
+
+	// Owning lesson is optional (a brand-new topic has no id yet).
+	resourceID := uuid.Nil
+	if lessonID != "" {
+		if id, err := uuid.Parse(lessonID); err == nil {
+			resourceID = id
+		}
+	}
+
+	ext := ExtByType[detected.String()]
+	key := fmt.Sprintf("inline/%s%s", uuid.New().String(), ext)
+
+	if err := s.r2.PutObject(ctx, key, detected.String(), bytes.NewReader(data)); err != nil {
+		log.Error("inline image: R2 put failed",
+			zap.String("event", "inline_put_failed"),
+			zap.String("r2_key", key),
+			zap.Error(err),
+		)
+		return uuid.Nil, ErrFailed
+	}
+
+	size := int64(len(data))
+	a := Attachment{
+		ID:                  uuid.New(),
+		Key:                 key,
+		Filename:            "inline" + ext,
+		ContentType:         detected.String(),
+		SizeBytes:           &size,
+		ResourceID:          resourceID.String(),
+		UploadedBy:          userID,
+		VerifiedContentType: detected.String(),
+	}
+	if err := s.repo.CreateInline(ctx, a); err != nil {
+		s.deleteObject(ctx, key, "inline_r2_delete_failed")
+		return uuid.Nil, err
+	}
+
+	log.Info("inline image uploaded",
+		zap.String("event", "inline_uploaded"),
+		zap.String("attachment_id", a.ID.String()),
+		zap.String("lesson_id", resourceID.String()),
+		zap.String("uploaded_by", userID.String()),
+		zap.String("content_type", detected.String()),
+		zap.Int64("size_bytes", size),
+	)
+
+	return a.ID, nil
+}
+
+// InlineImageURL returns a short-lived presigned R2 URL for an inline image, or
+// ErrNotFound. The public route 302-redirects to it, so the stored /inline/:id
+// URL stays stable while the bucket stays private.
+func (s *Service) InlineImageURL(ctx context.Context, id string) (string, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return "", ErrNotFound
+	}
+	key, contentType, err := s.repo.GetInlineByID(ctx, uid)
+	if err != nil {
+		return "", err
+	}
+	return s.r2.PresignGet(ctx, key, time.Duration(InlineURLTTL)*time.Second, contentType, "inline")
 }
 
 func (s *Service) deleteObject(ctx context.Context, key, event string) {

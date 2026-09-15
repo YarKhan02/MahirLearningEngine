@@ -22,12 +22,18 @@ func NewModule(svc *Service, tokenSvc *token.Service, redis *redis.RedisClient) 
 }
 
 func (m *Module) RegisterRoutes(r *gin.Engine) {
+	// Public: inline content images embedded in topic rich-text. No auth so
+	// <img> tags resolve; the id is an unguessable UUID and the route only
+	// redirects to a short-lived presigned URL for objects marked 'inline'.
+	r.GET("/attachment/inline/:id", m.handler.ServeInlineImage)
+
 	group := r.Group("/attachment", middleware.Auth(m.tokenSvc, m.redis))
 
 	admin := group.Group("/a", middleware.RequireRole("admin"))
 	{
 		admin.POST("/presign", m.handler.PresignUpload)
 		admin.POST("/confirm", m.handler.ConfirmUpload)
+		admin.POST("/inline", m.handler.UploadInlineImage)
 		admin.GET("/course/:courseId", m.handler.ListCourseMaterials)
 		admin.DELETE("/:attachmentId", m.handler.DeleteMaterial)
 	}

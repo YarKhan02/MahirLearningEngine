@@ -15,4 +15,8 @@ type Repository interface {
 	SoftDelete(ctx context.Context, id uuid.UUID) error
 	CourseExists(ctx context.Context, courseID string) (bool, error)
 	UserHasCourseAccess(ctx context.Context, userID uuid.UUID, courseID string) (bool, error)
+
+	// Inline content images (embedded in topic rich-text).
+	CreateInline(ctx context.Context, a Attachment) error
+	GetInlineByID(ctx context.Context, id uuid.UUID) (key string, contentType string, err error)
 }

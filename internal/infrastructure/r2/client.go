@@ -70,6 +70,16 @@ func (c *Client) ReadHeader(ctx context.Context, key string, n int64) ([]byte, e
 	return io.ReadAll(out.Body)
 }
 
+func (c *Client) PutObject(ctx context.Context, key, contentType string, body io.Reader) error {
+	_, err := c.S3.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(c.Bucket),
+		Key:         aws.String(key),
+		Body:        body,
+		ContentType: aws.String(contentType),
+	})
+	return err
+}
+
 func (c *Client) DeleteObject(ctx context.Context, key string) error {
 	_, err := c.S3.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(c.Bucket),
