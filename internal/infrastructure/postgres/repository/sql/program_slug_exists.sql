@@ -1,0 +1,1 @@
+SELECT EXISTS(SELECT 1 FROM programs WHERE slug = $1)
