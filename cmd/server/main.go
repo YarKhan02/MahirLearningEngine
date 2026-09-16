@@ -141,6 +141,18 @@ func run() error {
 	liveClassRepo := repository.NewLiveClassRepository(db)
 	liveKit := liveclass.NewLiveKit(cfg.LiveKitURL, cfg.LiveKitHostURL, cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
 	liveClassSvc := liveclass.NewService(liveClassRepo, r2Client, redisClient, liveKit)
+	// Live rooms and their auto-end timers live in memory, so any session still
+	// marked live at boot was orphaned by the previous process. End them now so a
+	// stuck row doesn't block starting a new class for that batch.
+	{
+		sweepCtx, sweepCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		if n, err := liveClassSvc.EndStaleSessions(sweepCtx); err != nil {
+			logger.Warn("failed to sweep orphaned live sessions", zap.String("event", "live_sweep_failed"), zap.Error(err))
+		} else if n > 0 {
+			logger.Info("ended orphaned live sessions on startup", zap.String("event", "live_sweep"), zap.Int64("count", n))
+		}
+		sweepCancel()
+	}
 	// Auto-end a class when the host has been disconnected past the grace period.
 	liveClassHub := liveclass.NewHub(func(sessionID, hostID uuid.UUID) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -148,9 +160,7 @@ func run() error {
 		_, _ = liveClassSvc.EndSession(ctx, sessionID, hostID)
 	})
 	// WebSocket allowed origins (host[:port])
-	liveOriginPatterns := []string{
-		stripScheme(cfg.AllowedOrigin), "www.mahircodelab.com", "localhost:*", "127.0.0.1:*",
-	}
+	liveOriginPatterns := liveclass.OriginPatterns(cfg.AllowedOrigin)
 
 	batchRepo := repository.NewBatchRepository(db)
 	batchCache := batch.NewCachedRepository(batchRepo, redisClient)
@@ -206,10 +216,4 @@ func run() error {
 	}
 
 	return nil
-}
-
-func stripScheme(origin string) string {
-	origin = strings.TrimPrefix(origin, "https://")
-	origin = strings.TrimPrefix(origin, "http://")
-	return strings.TrimSuffix(origin, "/")
 }

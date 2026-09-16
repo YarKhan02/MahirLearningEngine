@@ -14,8 +14,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// ErrVideoNotConfigured is returned when LiveKit env vars are absent; the video
-// layer is optional, so callers translate this to a "video off" response.
+// ErrVideoNotConfigured is returned when LiveKit env vars are absent
 var ErrVideoNotConfigured = errors.New("video is not configured")
 
 // LiveKit mints join tokens and manages participant permissions. It talks to
@@ -49,6 +48,7 @@ func (lk *LiveKit) WSURL() string { return lk.wsURL }
 type videoGrant struct {
 	RoomJoin       bool   `json:"roomJoin,omitempty"`
 	RoomAdmin      bool   `json:"roomAdmin,omitempty"`
+	RoomCreate     bool   `json:"roomCreate,omitempty"`
 	Room           string `json:"room,omitempty"`
 	CanPublish     *bool  `json:"canPublish,omitempty"`
 	CanSubscribe   *bool  `json:"canSubscribe,omitempty"`
@@ -90,27 +90,49 @@ func (lk *LiveKit) Token(identity, name, room string, canPublish bool) (string, 
 }
 
 // SetPublish grants/revokes a connected participant's publish permission via the
-// LiveKit RoomService (Twirp/JSON) — used for raise-hand.
+// LiveKit RoomService (Twirp/JSON) — used for raise-hand. When granting, publish
+// is scoped to MICROPHONE only: "allowed to speak" must not also let a student
+// turn on their camera or share their screen.
 func (lk *LiveKit) SetPublish(ctx context.Context, room, identity string, allow bool) error {
 	if !lk.Configured() || lk.hostURL == "" {
 		return ErrVideoNotConfigured
 	}
-	adminTok, err := lk.signToken("", "", videoGrant{RoomAdmin: true, Room: room}, 10*time.Minute)
+	perm := map[string]any{
+		"canSubscribe":   true,
+		"canPublish":     allow,
+		"canPublishData": true,
+	}
+	if allow {
+		// Restrict the grant to audio so a raised hand can't publish video/screen.
+		perm["canPublishSources"] = []string{"MICROPHONE"}
+	}
+	return lk.roomService(ctx, "UpdateParticipant",
+		videoGrant{RoomAdmin: true, Room: room},
+		map[string]any{"room": room, "identity": identity, "permission": perm})
+}
+
+// DeleteRoom disconnects everyone from a room and tears it down. Called when a
+// class ends so lingering join tokens (which LiveKit does not re-check against
+// our DB) can't keep a removed participant connected past the class.
+func (lk *LiveKit) DeleteRoom(ctx context.Context, room string) error {
+	if !lk.Configured() || lk.hostURL == "" {
+		return ErrVideoNotConfigured
+	}
+	return lk.roomService(ctx, "DeleteRoom",
+		videoGrant{RoomCreate: true, Room: room},
+		map[string]any{"room": room})
+}
+
+// roomService POSTs a Twirp/JSON request to LiveKit's RoomService, signing an
+// admin token with the given grant.
+func (lk *LiveKit) roomService(ctx context.Context, method string, grant videoGrant, payload map[string]any) error {
+	adminTok, err := lk.signToken("", "", grant, 10*time.Minute)
 	if err != nil {
 		return err
 	}
+	body, _ := json.Marshal(payload)
 
-	body, _ := json.Marshal(map[string]any{
-		"room":     room,
-		"identity": identity,
-		"permission": map[string]any{
-			"canSubscribe":   true,
-			"canPublish":     allow,
-			"canPublishData": true,
-		},
-	})
-
-	url := strings.TrimRight(lk.hostURL, "/") + "/twirp/livekit.RoomService/UpdateParticipant"
+	url := strings.TrimRight(lk.hostURL, "/") + "/twirp/livekit.RoomService/" + method
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return err
@@ -125,7 +147,7 @@ func (lk *LiveKit) SetPublish(ctx context.Context, room, identity string, allow 
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return fmt.Errorf("livekit update participant: %s: %s", resp.Status, strings.TrimSpace(string(b)))
+		return fmt.Errorf("livekit %s: %s: %s", method, resp.Status, strings.TrimSpace(string(b)))
 	}
 	return nil
 }

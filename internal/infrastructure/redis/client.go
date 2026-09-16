@@ -53,6 +53,11 @@ func (r *RedisClient) Get(ctx context.Context, key string) (string, error) {
 	return r.client.Get(ctx, key).Result()
 }
 
+// GetDel atomically returns a key's value and deletes it (single-use tokens).
+func (r *RedisClient) GetDel(ctx context.Context, key string) (string, error) {
+	return r.client.GetDel(ctx, key).Result()
+}
+
 func (r *RedisClient) Exists(ctx context.Context, key string) (bool, error) {
 	n, err := r.client.Exists(ctx, key).Result()
 	if err != nil {

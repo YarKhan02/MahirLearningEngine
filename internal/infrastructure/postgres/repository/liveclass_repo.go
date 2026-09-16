@@ -17,6 +17,9 @@ var liveSessionCreateSQL string
 //go:embed sql/live_session_end.sql
 var liveSessionEndSQL string
 
+//go:embed sql/live_session_end_all.sql
+var liveSessionEndAllSQL string
+
 //go:embed sql/live_session_get.sql
 var liveSessionGetSQL string
 
@@ -174,6 +177,14 @@ func (r *LiveClassRepository) EndSession(ctx context.Context, id, hostID uuid.UU
 		return liveclass.ErrNotFound
 	}
 	return nil
+}
+
+func (r *LiveClassRepository) EndAllLive(ctx context.Context) (int64, error) {
+	res, err := r.db.ExecContext(ctx, liveSessionEndAllSQL)
+	if err != nil {
+		return 0, fmt.Errorf("end all live sessions: %w", err)
+	}
+	return res.RowsAffected()
 }
 
 func (r *LiveClassRepository) GetSession(ctx context.Context, id uuid.UUID) (liveclass.LiveSession, error) {
