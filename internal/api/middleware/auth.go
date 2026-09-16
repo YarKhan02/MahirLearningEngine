@@ -114,6 +114,7 @@ func GetClaims(ctx context.Context) *token.Claims {
 	claims, _ := ctx.Value(claimsKey).(*token.Claims)
 	return claims
 }
+
 // CurrentUser returns the authenticated user's claims set by Auth.
 func CurrentUser(c *gin.Context) (*token.Claims, bool) {
 	value, exists := c.Get("claims")
@@ -138,4 +139,20 @@ func CurrentUserID(c *gin.Context) (uuid.UUID, bool) {
 	}
 
 	return userID, true
+}
+
+// CurrentUserRole returns the authenticated user's id and role from the JWT
+// claims — for handlers that authorize on both (e.g. admin-vs-student branches).
+func CurrentUserRole(c *gin.Context) (uuid.UUID, string, bool) {
+	claims, ok := CurrentUser(c)
+	if !ok {
+		return uuid.Nil, "", false
+	}
+
+	userID, err := claims.UserUUID()
+	if err != nil {
+		return uuid.Nil, "", false
+	}
+
+	return userID, claims.Role, true
 }

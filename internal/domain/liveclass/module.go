@@ -1,11 +1,30 @@
 package liveclass
 
 import (
+	"strings"
+
 	"github.com/YarKhan02/MahirLearningEngine/internal/api/middleware"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/infrastructure/redis"
 	"github.com/gin-gonic/gin"
 )
+
+// OriginPatterns returns the host[:port] patterns allowed to open the live-class
+// WebSocket, matched against the browser Origin header (dev + production).
+func OriginPatterns(allowedOrigin string) []string {
+	return []string{
+		stripScheme(allowedOrigin),
+		"www.mahircodelab.com",
+		"localhost:*",
+		"127.0.0.1:*",
+	}
+}
+
+func stripScheme(origin string) string {
+	origin = strings.TrimPrefix(origin, "https://")
+	origin = strings.TrimPrefix(origin, "http://")
+	return strings.TrimSuffix(origin, "/")
+}
 
 type Module struct {
 	handler  *Handler

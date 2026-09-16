@@ -23,22 +23,10 @@ func NewHandler(svc *Service, hub *Hub, originPatterns []string) *Handler {
 	return &Handler{svc: svc, hub: hub, originPatterns: originPatterns}
 }
 
-func (h *Handler) currentUserRole(c *gin.Context) (uuid.UUID, string, bool) {
-	claims, ok := middleware.CurrentUser(c)
-	if !ok {
-		return uuid.Nil, "", false
-	}
-	id, err := claims.UserUUID()
-	if err != nil {
-		return uuid.Nil, "", false
-	}
-	return id, claims.Role, true
-}
-
-/* ---------------- Session lifecycle (admin) ---------------- */
+/* Session lifecycle (admin) */
 
 func (h *Handler) StartSession(c *gin.Context) {
-	hostID, _, ok := h.currentUserRole(c)
+	hostID, _, ok := middleware.CurrentUserRole(c)
 	if !ok {
 		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
 		return
@@ -72,7 +60,7 @@ func (h *Handler) StartSession(c *gin.Context) {
 }
 
 func (h *Handler) EndSession(c *gin.Context) {
-	hostID, _, ok := h.currentUserRole(c)
+	hostID, _, ok := middleware.CurrentUserRole(c)
 	if !ok {
 		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
 		return
@@ -94,21 +82,29 @@ func (h *Handler) EndSession(c *gin.Context) {
 	response.WriteJSON(c, http.StatusOK, toSessionResponse(sess))
 }
 
-/* ---------------- Reads ---------------- */
+/* Reads */
 
 func (h *Handler) GetSession(c *gin.Context) {
+	userID, role, ok := middleware.CurrentUserRole(c)
+	if !ok {
+		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
+		return
+	}
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.WriteError(c, http.StatusBadRequest, "invalid session id")
 		return
 	}
-	sess, err := h.svc.GetSession(c.Request.Context(), id)
+	sess, err := h.svc.GetSessionForUser(c.Request.Context(), userID, role, id)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		switch {
+		case errors.Is(err, ErrNotFound):
 			response.WriteError(c, http.StatusNotFound, "session not found")
-			return
+		case errors.Is(err, ErrForbidden):
+			response.WriteError(c, http.StatusForbidden, "no access to this class")
+		default:
+			response.WriteInternal(c, err)
 		}
-		response.WriteInternal(c, err)
 		return
 	}
 	response.WriteJSON(c, http.StatusOK, toSessionResponse(sess))
@@ -116,7 +112,7 @@ func (h *Handler) GetSession(c *gin.Context) {
 
 // GetMyLive returns the class currently live for the caller's own batch, if any.
 func (h *Handler) GetMyLive(c *gin.Context) {
-	userID, _, ok := h.currentUserRole(c)
+	userID, _, ok := middleware.CurrentUserRole(c)
 	if !ok {
 		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
 		return
@@ -135,27 +131,35 @@ func (h *Handler) GetMyLive(c *gin.Context) {
 
 // GetLiveByBatch lets a student find the class currently live for their batch.
 func (h *Handler) GetLiveByBatch(c *gin.Context) {
+	userID, role, ok := middleware.CurrentUserRole(c)
+	if !ok {
+		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
+		return
+	}
 	batchID, err := uuid.Parse(c.Param("batchId"))
 	if err != nil {
 		response.WriteError(c, http.StatusBadRequest, "invalid batch id")
 		return
 	}
-	sess, err := h.svc.GetLiveByBatch(c.Request.Context(), batchID)
+	sess, err := h.svc.GetLiveByBatchForUser(c.Request.Context(), userID, role, batchID)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		switch {
+		case errors.Is(err, ErrNotFound):
 			response.WriteError(c, http.StatusNotFound, "no live class for this batch")
-			return
+		case errors.Is(err, ErrForbidden):
+			response.WriteError(c, http.StatusForbidden, "no access to this batch")
+		default:
+			response.WriteInternal(c, err)
 		}
-		response.WriteInternal(c, err)
 		return
 	}
 	response.WriteJSON(c, http.StatusOK, toSessionResponse(sess))
 }
 
-/* ---------------- Student browse (past classes) ---------------- */
+/* Student browse (past classes) */
 
 func (h *Handler) MyBatches(c *gin.Context) {
-	userID, _, ok := h.currentUserRole(c)
+	userID, _, ok := middleware.CurrentUserRole(c)
 	if !ok {
 		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
 		return
@@ -169,7 +173,7 @@ func (h *Handler) MyBatches(c *gin.Context) {
 }
 
 func (h *Handler) MyBatchCourses(c *gin.Context) {
-	userID, _, ok := h.currentUserRole(c)
+	userID, _, ok := middleware.CurrentUserRole(c)
 	if !ok {
 		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
 		return
@@ -188,7 +192,7 @@ func (h *Handler) MyBatchCourses(c *gin.Context) {
 }
 
 func (h *Handler) ListSessions(c *gin.Context) {
-	userID, role, ok := h.currentUserRole(c)
+	userID, role, ok := middleware.CurrentUserRole(c)
 	if !ok {
 		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
 		return
@@ -215,10 +219,10 @@ func (h *Handler) ListSessions(c *gin.Context) {
 	response.WriteJSON(c, http.StatusOK, toSessionResponses(items))
 }
 
-/* ---------------- WebSocket ticket + upgrade ---------------- */
+/* WebSocket ticket + upgrade */
 
 func (h *Handler) IssueTicket(c *gin.Context) {
-	userID, role, ok := h.currentUserRole(c)
+	userID, role, ok := middleware.CurrentUserRole(c)
 	if !ok {
 		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
 		return
@@ -270,10 +274,10 @@ func (h *Handler) ServeWS(c *gin.Context) {
 	h.hub.Serve(context.Background(), conn, data.SessionID, data.UserID, data.Name, data.IsHost)
 }
 
-/* ---------------- Video (LiveKit) ---------------- */
+/* Video (LiveKit) */
 
 func (h *Handler) RTCToken(c *gin.Context) {
-	userID, role, ok := h.currentUserRole(c)
+	userID, role, ok := middleware.CurrentUserRole(c)
 	if !ok {
 		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
 		return
@@ -303,7 +307,7 @@ func (h *Handler) RTCToken(c *gin.Context) {
 }
 
 func (h *Handler) SetMic(c *gin.Context) {
-	hostID, role, ok := h.currentUserRole(c)
+	hostID, role, ok := middleware.CurrentUserRole(c)
 	if !ok {
 		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
 		return
@@ -334,10 +338,10 @@ func (h *Handler) SetMic(c *gin.Context) {
 	response.WriteJSON(c, http.StatusOK, "updated")
 }
 
-/* ---------------- Snapshots ---------------- */
+/* Snapshots */
 
 func (h *Handler) SaveSnapshot(c *gin.Context) {
-	userID, _, ok := h.currentUserRole(c)
+	userID, _, ok := middleware.CurrentUserRole(c)
 	if !ok {
 		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
 		return
@@ -370,7 +374,7 @@ func (h *Handler) SaveSnapshot(c *gin.Context) {
 }
 
 func (h *Handler) ListSnapshots(c *gin.Context) {
-	userID, role, ok := h.currentUserRole(c)
+	userID, role, ok := middleware.CurrentUserRole(c)
 	if !ok {
 		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
 		return

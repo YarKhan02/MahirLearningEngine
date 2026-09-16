@@ -18,9 +18,14 @@ import (
 )
 
 const (
-	roleAdmin      = "admin"
-	ticketTTL      = 30 * time.Second
-	ticketKeyPart  = "wsticket:"
+	roleAdmin     = "admin"
+	ticketTTL     = 30 * time.Second
+	ticketKeyPart = "wsticket:"
+
+	// maxTitleLen bounds a class title so a rogue admin can't store oversized rows.
+	maxTitleLen = 200
+	// maxSceneBytes bounds a saved whiteboard scene (JSON of elements) at ~8 MB.
+	maxSceneBytes = 8 << 20
 )
 
 type Service struct {
@@ -53,6 +58,10 @@ func (s *Service) StartSession(ctx context.Context, hostID, batchID, courseID uu
 		return LiveSession{}, err
 	}
 
+	if len(title) > maxTitleLen {
+		title = title[:maxTitleLen]
+	}
+
 	sess := LiveSession{
 		ID:       uuid.New(),
 		BatchID:  batchID,
@@ -82,6 +91,17 @@ func (s *Service) EndSession(ctx context.Context, id, hostID uuid.UUID) (LiveSes
 	if err := s.repo.EndSession(ctx, id, hostID); err != nil {
 		return LiveSession{}, err
 	}
+	// Tear down the video room so lingering join tokens can't keep anyone
+	// connected past the class (best-effort; ignore if video is off).
+	if s.livekit != nil {
+		if err := s.livekit.DeleteRoom(ctx, id.String()); err != nil && !errors.Is(err, ErrVideoNotConfigured) {
+			logging.FromLogger(ctx).Warn("livekit delete room failed",
+				zap.String("event", "live_room_delete_failed"),
+				zap.String("session_id", id.String()),
+				zap.Error(err),
+			)
+		}
+	}
 	logging.FromLogger(ctx).Info("live session ended",
 		zap.String("event", "live_session_ended"),
 		zap.String("session_id", id.String()),
@@ -89,11 +109,53 @@ func (s *Service) EndSession(ctx context.Context, id, hostID uuid.UUID) (LiveSes
 	return s.repo.GetSession(ctx, id)
 }
 
+// EndStaleSessions ends sessions still marked live at startup (orphaned by a
+// process restart, since rooms and their auto-end timers are in-memory only).
+func (s *Service) EndStaleSessions(ctx context.Context) (int64, error) {
+	return s.repo.EndAllLive(ctx)
+}
+
 func (s *Service) GetSession(ctx context.Context, id uuid.UUID) (LiveSession, error) {
 	return s.repo.GetSession(ctx, id)
 }
 
+// GetSessionForUser returns a session only if the caller may view it: any admin,
+// or a student whose batch is enrolled in the session. Returns ErrNotFound or
+// ErrForbidden.
+func (s *Service) GetSessionForUser(ctx context.Context, userID uuid.UUID, role string, id uuid.UUID) (LiveSession, error) {
+	sess, err := s.repo.GetSession(ctx, id)
+	if err != nil {
+		return LiveSession{}, err
+	}
+	if role == roleAdmin {
+		return sess, nil
+	}
+	ok, err := s.repo.StudentCanJoin(ctx, userID, id)
+	if err != nil {
+		return LiveSession{}, err
+	}
+	if !ok {
+		return LiveSession{}, ErrForbidden
+	}
+	return sess, nil
+}
+
 func (s *Service) GetLiveByBatch(ctx context.Context, batchID uuid.UUID) (LiveSession, error) {
+	return s.repo.GetLiveByBatch(ctx, batchID)
+}
+
+// GetLiveByBatchForUser returns the batch's live session only if the caller may
+// see that batch: any admin, or a student who belongs to it.
+func (s *Service) GetLiveByBatchForUser(ctx context.Context, userID uuid.UUID, role string, batchID uuid.UUID) (LiveSession, error) {
+	if role != roleAdmin {
+		ok, err := s.repo.StudentInBatch(ctx, userID, batchID)
+		if err != nil {
+			return LiveSession{}, err
+		}
+		if !ok {
+			return LiveSession{}, ErrForbidden
+		}
+	}
 	return s.repo.GetLiveByBatch(ctx, batchID)
 }
 
@@ -174,11 +236,11 @@ func (s *Service) ConsumeTicket(ctx context.Context, ticket string) (TicketData,
 		return TicketData{}, ErrForbidden
 	}
 	key := ticketKeyPart + ticket
-	raw, err := s.redis.Get(ctx, key)
+	// GetDel is atomic: two racing connections can't both consume one ticket.
+	raw, err := s.redis.GetDel(ctx, key)
 	if err != nil || raw == "" {
 		return TicketData{}, ErrForbidden
 	}
-	_ = s.redis.Delete(ctx, key) // one-time use
 
 	var data TicketData
 	if err := json.Unmarshal([]byte(raw), &data); err != nil {
@@ -220,7 +282,7 @@ func (s *Service) SetStudentMic(ctx context.Context, hostID uuid.UUID, role stri
 // Snapshots
 
 func (s *Service) SaveSnapshot(ctx context.Context, sessionID, userID uuid.UUID, snap SaveSnapshot) (WhiteboardSnapshot, error) {
-	if len(snap.Scene) == 0 {
+	if len(snap.Scene) == 0 || len(snap.Scene) > maxSceneBytes {
 		return WhiteboardSnapshot{}, ErrInvalid
 	}
 	// Only the host may save.
@@ -266,7 +328,7 @@ func (s *Service) ListSnapshots(ctx context.Context, sessionID uuid.UUID) ([]Whi
 	return s.repo.ListSnapshots(ctx, sessionID)
 }
 
-/* ---------------- Student browse (past classes) ---------------- */
+/* Student browse (past classes) */
 
 func (s *Service) MyBatches(ctx context.Context, userID uuid.UUID) ([]BatchOption, error) {
 	return s.repo.StudentBatches(ctx, userID)

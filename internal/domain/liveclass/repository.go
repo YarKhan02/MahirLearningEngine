@@ -9,6 +9,7 @@ import (
 type Repository interface {
 	CreateSession(ctx context.Context, s LiveSession) error
 	EndSession(ctx context.Context, id, hostID uuid.UUID) error
+	EndAllLive(ctx context.Context) (int64, error)
 	GetSession(ctx context.Context, id uuid.UUID) (LiveSession, error)
 	GetLiveByBatch(ctx context.Context, batchID uuid.UUID) (LiveSession, error)
 	GetLiveForUser(ctx context.Context, userID uuid.UUID) (LiveSession, error)

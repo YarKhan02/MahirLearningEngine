@@ -13,9 +13,13 @@ import (
 
 const writeTimeout = 10 * time.Second
 
-// maxReadBytes lifts coder/websocket's default 32 KiB per-message read limit so
-// image "files" messages (base64 data URLs) aren't rejected. Capped to bound abuse.
 const maxReadBytes = 16 << 20 // 16 MB
+
+// maxParticipants caps concurrent connections per room to bound goroutine and
+// memory growth (each client = 2 goroutines + a send buffer). The host is exempt
+// so a teacher is never locked out of their own class. Generous — the practical
+// video ceiling (LiveKit egress) is far lower.
+const maxParticipants = 300
 
 // hostGraceDuration is how long a class stays live after the host's last
 // connection drops, before it auto-ends. Absorbs brief reconnects (refresh,
@@ -108,6 +112,18 @@ func (r *room) add(c *client) {
 	r.mu.Lock()
 	r.clients[c] = true
 	r.mu.Unlock()
+}
+
+// tryAdd adds a non-host client only if the room is under the cap. Returns false
+// when the class is full.
+func (r *room) tryAdd(c *client, max int) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.clients) >= max {
+		return false
+	}
+	r.clients[c] = true
+	return true
 }
 
 func (r *room) remove(c *client) {
@@ -244,9 +260,15 @@ func (h *Hub) Serve(ctx context.Context, conn *websocket.Conn, sessionID, userID
 	conn.SetReadLimit(maxReadBytes) // allow large image (files) messages
 	r := h.getRoom(sessionID)
 	c := &client{conn: conn, userID: userID, name: name, isHost: isHost, send: make(chan []byte, 32), room: r}
-	r.add(c)
 	if isHost {
+		r.add(c)
 		h.hostJoined(r, userID)
+	} else if !r.tryAdd(c, maxParticipants) {
+		// Room full — reject before spawning loops. dropIfEmpty in case this
+		// attempt created an otherwise-empty room.
+		_ = conn.Close(websocket.StatusTryAgainLater, "class is full")
+		h.dropIfEmpty(r)
+		return
 	}
 
 	// Replay current files then the scene, so images resolve when the elements
