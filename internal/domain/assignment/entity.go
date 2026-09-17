@@ -12,9 +12,32 @@ type Assignment struct {
 	Title       string
 	Description string
 	StarterCode string
+	Language    string // "" = plain assignment; "python" = code assignment (runner + autograde)
 	DueDate     *time.Time
 	TotalMarks  int
 	CreatedAt   time.Time
+	TestCases   []TestCase // used on create only
+}
+
+// TestCase is a hidden input/expected-output pair for autograding.
+type TestCase struct {
+	ID             uuid.UUID
+	AssignmentID   uuid.UUID
+	Stdin          string
+	ExpectedStdout string
+	Weight         int
+	Ordinal        int
+}
+
+// TestResult is one test's outcome for a submission (shown without inputs).
+type TestResult struct {
+	TestCaseID   uuid.UUID
+	Passed       bool
+	ActualStdout string
+	Stderr       string
+	TimedOut     bool
+	DurationMs   int
+	Ordinal      int
 }
 
 type Submission struct {
@@ -24,8 +47,12 @@ type Submission struct {
 	Code         string
 	Remarks      *string
 	Marks        *int
+	AutoScore    *int
+	TestsTotal   *int
+	TestsPassed  *int
 	Status       string
 	SubmittedAt  time.Time
+	Results      []TestResult
 }
 
 type StudentAssignment struct {
@@ -44,6 +71,10 @@ type BatchSubmission struct {
 	Code            string
 	Remarks         *string
 	Marks           *int
+	AutoScore       *int
+	TestsTotal      *int
+	TestsPassed     *int
+	Language        string
 	Status          string
 	SubmittedAt     time.Time
 	StudentID       uuid.UUID

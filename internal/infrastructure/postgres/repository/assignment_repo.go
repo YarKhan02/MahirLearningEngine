@@ -56,6 +56,27 @@ var submissionsByStudentSummarySQL string
 //go:embed sql/student_by_user_get.sql
 var assignmentStudentByUserSQL string
 
+//go:embed sql/test_case_create.sql
+var testCaseCreateSQL string
+
+//go:embed sql/assignment_grading_meta.sql
+var assignmentGradingMetaSQL string
+
+//go:embed sql/test_cases_for_grading.sql
+var testCasesForGradingSQL string
+
+//go:embed sql/submission_autograde_save.sql
+var submissionAutogradeSaveSQL string
+
+//go:embed sql/submission_results_delete.sql
+var submissionResultsDeleteSQL string
+
+//go:embed sql/submission_result_insert.sql
+var submissionResultInsertSQL string
+
+//go:embed sql/submission_results_by_submission.sql
+var submissionResultsBySubmissionSQL string
+
 type AssignmentRepository struct {
 	db *sql.DB
 }
@@ -69,10 +90,15 @@ func (r *AssignmentRepository) CreateAssignment(ctx context.Context, a *assignme
 	if err != nil {
 		return err
 	}
-
 	a.ID = id
 
-	_, err = r.db.ExecContext(
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("create assignment: begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err = tx.ExecContext(
 		ctx,
 		assignmentCreateSQL,
 		a.ID,
@@ -80,13 +106,28 @@ func (r *AssignmentRepository) CreateAssignment(ctx context.Context, a *assignme
 		a.Title,
 		a.Description,
 		a.StarterCode,
+		a.Language,
 		a.DueDate,
 		a.TotalMarks,
-	)
-	if err != nil {
+	); err != nil {
 		return fmt.Errorf("create assignment: %w", err)
 	}
 
+	for _, tc := range a.TestCases {
+		tcID, err := uuid.NewV7()
+		if err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, testCaseCreateSQL,
+			tcID, a.ID, tc.Stdin, tc.ExpectedStdout, tc.Weight, tc.Ordinal,
+		); err != nil {
+			return fmt.Errorf("create test case: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("create assignment: commit: %w", err)
+	}
 	return nil
 }
 
@@ -184,6 +225,9 @@ func (r *AssignmentRepository) GetStudentAssignments(ctx context.Context, lesson
 			subCode        sql.NullString
 			subRemarks     sql.NullString
 			subMarks       sql.NullInt64
+			subAutoScore   sql.NullInt64
+			subTestsTotal  sql.NullInt64
+			subTestsPassed sql.NullInt64
 			subStatus      sql.NullString
 			subSubmittedAt sql.NullTime
 		)
@@ -194,6 +238,7 @@ func (r *AssignmentRepository) GetStudentAssignments(ctx context.Context, lesson
 			&a.Title,
 			&a.Description,
 			&a.StarterCode,
+			&a.Language,
 			&a.DueDate,
 			&a.TotalMarks,
 			&a.CreatedAt,
@@ -201,6 +246,9 @@ func (r *AssignmentRepository) GetStudentAssignments(ctx context.Context, lesson
 			&subCode,
 			&subRemarks,
 			&subMarks,
+			&subAutoScore,
+			&subTestsTotal,
+			&subTestsPassed,
 			&subStatus,
 			&subSubmittedAt,
 		); err != nil {
@@ -223,6 +271,18 @@ func (r *AssignmentRepository) GetStudentAssignments(ctx context.Context, lesson
 				m := int(subMarks.Int64)
 				sub.Marks = &m
 			}
+			if subAutoScore.Valid {
+				v := int(subAutoScore.Int64)
+				sub.AutoScore = &v
+			}
+			if subTestsTotal.Valid {
+				v := int(subTestsTotal.Int64)
+				sub.TestsTotal = &v
+			}
+			if subTestsPassed.Valid {
+				v := int(subTestsPassed.Int64)
+				sub.TestsPassed = &v
+			}
 			a.Submission = sub
 		}
 
@@ -236,17 +296,95 @@ func (r *AssignmentRepository) GetStudentAssignments(ctx context.Context, lesson
 	return assignments, nil
 }
 
-func (r *AssignmentRepository) SubmitAssignment(ctx context.Context, studentID uuid.UUID, assignmentID uuid.UUID, code string) error {
+func (r *AssignmentRepository) SubmitAssignment(ctx context.Context, studentID uuid.UUID, assignmentID uuid.UUID, code string) (uuid.UUID, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
-	if _, err := r.db.ExecContext(ctx, submissionUpsertSQL, id, studentID, assignmentID, code); err != nil {
-		return fmt.Errorf("submit assignment: %w", err)
+	var submissionID uuid.UUID
+	if err := r.db.QueryRowContext(ctx, submissionUpsertSQL, id, studentID, assignmentID, code).Scan(&submissionID); err != nil {
+		return uuid.Nil, fmt.Errorf("submit assignment: %w", err)
+	}
+	return submissionID, nil
+}
+
+// GetGradingData returns the assignment's language, total marks, and hidden test
+// cases (with expected outputs) for autograding.
+func (r *AssignmentRepository) GetGradingData(ctx context.Context, assignmentID uuid.UUID) (string, int, []assignment.TestCase, error) {
+	var language string
+	var totalMarks int
+	if err := r.db.QueryRowContext(ctx, assignmentGradingMetaSQL, assignmentID).Scan(&language, &totalMarks); err != nil {
+		return "", 0, nil, fmt.Errorf("grading meta: %w", err)
 	}
 
+	rows, err := r.db.QueryContext(ctx, testCasesForGradingSQL, assignmentID)
+	if err != nil {
+		return "", 0, nil, fmt.Errorf("grading test cases: %w", err)
+	}
+	defer rows.Close()
+
+	var tests []assignment.TestCase
+	for rows.Next() {
+		var t assignment.TestCase
+		if err := rows.Scan(&t.ID, &t.Stdin, &t.ExpectedStdout, &t.Weight, &t.Ordinal); err != nil {
+			return "", 0, nil, fmt.Errorf("scan test case: %w", err)
+		}
+		t.AssignmentID = assignmentID
+		tests = append(tests, t)
+	}
+	return language, totalMarks, tests, rows.Err()
+}
+
+// SaveAutoGrade stores the autoscore/counts and replaces the per-test results.
+func (r *AssignmentRepository) SaveAutoGrade(ctx context.Context, submissionID uuid.UUID, autoScore, testsTotal, testsPassed int, results []assignment.TestResult) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("save autograde: begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.ExecContext(ctx, submissionAutogradeSaveSQL, submissionID, autoScore, testsTotal, testsPassed); err != nil {
+		return fmt.Errorf("save autograde: update: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, submissionResultsDeleteSQL, submissionID); err != nil {
+		return fmt.Errorf("save autograde: clear results: %w", err)
+	}
+	for _, res := range results {
+		rID, err := uuid.NewV7()
+		if err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, submissionResultInsertSQL,
+			rID, submissionID, res.TestCaseID, res.Passed, res.ActualStdout, res.Stderr, res.TimedOut, res.DurationMs, res.Ordinal,
+		); err != nil {
+			return fmt.Errorf("save autograde: insert result: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("save autograde: commit: %w", err)
+	}
 	return nil
+}
+
+func (r *AssignmentRepository) GetSubmissionResults(ctx context.Context, submissionID uuid.UUID) ([]assignment.TestResult, error) {
+	rows, err := r.db.QueryContext(ctx, submissionResultsBySubmissionSQL, submissionID)
+	if err != nil {
+		return nil, fmt.Errorf("get submission results: %w", err)
+	}
+	defer rows.Close()
+
+	var out []assignment.TestResult
+	for rows.Next() {
+		var res assignment.TestResult
+		if err := rows.Scan(
+			&res.TestCaseID, &res.Passed, &res.ActualStdout, &res.Stderr, &res.TimedOut, &res.DurationMs, &res.Ordinal,
+		); err != nil {
+			return nil, fmt.Errorf("scan result: %w", err)
+		}
+		out = append(out, res)
+	}
+	return out, rows.Err()
 }
 
 func (r *AssignmentRepository) GetBatchSubmissions(ctx context.Context, batchID uuid.UUID, q, status string, limit, offset int) ([]assignment.BatchSubmission, error) {
@@ -318,11 +456,20 @@ func scanBatchSubmissions(rows *sql.Rows) ([]assignment.BatchSubmission, error) 
 	for rows.Next() {
 		var s assignment.BatchSubmission
 
+		var (
+			autoScore   sql.NullInt64
+			testsTotal  sql.NullInt64
+			testsPassed sql.NullInt64
+		)
 		if err := rows.Scan(
 			&s.ID,
 			&s.Code,
 			&s.Remarks,
 			&s.Marks,
+			&autoScore,
+			&testsTotal,
+			&testsPassed,
+			&s.Language,
 			&s.Status,
 			&s.SubmittedAt,
 			&s.StudentID,
@@ -337,6 +484,18 @@ func scanBatchSubmissions(rows *sql.Rows) ([]assignment.BatchSubmission, error) 
 			&s.CourseTitle,
 		); err != nil {
 			return nil, fmt.Errorf("scan submission: %w", err)
+		}
+		if autoScore.Valid {
+			v := int(autoScore.Int64)
+			s.AutoScore = &v
+		}
+		if testsTotal.Valid {
+			v := int(testsTotal.Int64)
+			s.TestsTotal = &v
+		}
+		if testsPassed.Valid {
+			v := int(testsPassed.Int64)
+			s.TestsPassed = &v
 		}
 
 		submissions = append(submissions, s)

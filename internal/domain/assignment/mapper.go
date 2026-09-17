@@ -15,6 +15,7 @@ func ToCreateAssignment(req CreateAssignmentRequest, lessonID uuid.UUID) (*Assig
 		Title:       req.Title,
 		Description: req.Description,
 		StarterCode: req.StarterCode,
+		Language:    req.Language,
 		TotalMarks:  req.TotalMarks,
 	}
 
@@ -24,6 +25,19 @@ func ToCreateAssignment(req CreateAssignmentRequest, lessonID uuid.UUID) (*Assig
 			return nil, fmt.Errorf("invalid dueDate: %w", err)
 		}
 		a.DueDate = &dueDate
+	}
+
+	for i, tc := range req.TestCases {
+		w := tc.Weight
+		if w <= 0 {
+			w = 1
+		}
+		a.TestCases = append(a.TestCases, TestCase{
+			Stdin:          tc.Stdin,
+			ExpectedStdout: tc.ExpectedStdout,
+			Weight:         w,
+			Ordinal:        i,
+		})
 	}
 
 	return a, nil
@@ -36,6 +50,7 @@ func ToAssignmentResponse(req Assignment) AssignmentResponse {
 		Title:       req.Title,
 		Description: req.Description,
 		StarterCode: req.StarterCode,
+		Language:    req.Language,
 		TotalMarks:  req.TotalMarks,
 		CreatedAt:   req.CreatedAt.Format(time.RFC3339),
 	}
@@ -58,11 +73,30 @@ func ToStudentAssignmentResponse(req StudentAssignment) StudentAssignmentRespons
 			Status:      req.Submission.Status,
 			Marks:       req.Submission.Marks,
 			Remarks:     req.Submission.Remarks,
+			AutoScore:   req.Submission.AutoScore,
+			TestsTotal:  req.Submission.TestsTotal,
+			TestsPassed: req.Submission.TestsPassed,
+			Results:     toTestResultResponses(req.Submission.Results),
 			SubmittedAt: req.Submission.SubmittedAt.Format(time.RFC3339),
 		}
 	}
 
 	return resp
+}
+
+func toTestResultResponses(results []TestResult) []TestResultResponse {
+	if len(results) == 0 {
+		return nil
+	}
+	out := make([]TestResultResponse, 0, len(results))
+	for _, r := range results {
+		out = append(out, TestResultResponse{
+			Ordinal:  r.Ordinal,
+			Passed:   r.Passed,
+			TimedOut: r.TimedOut,
+		})
+	}
+	return out
 }
 
 func ToSubmissionSummaryResponse(s SubmissionSummary) SubmissionSummaryResponse {
@@ -75,6 +109,10 @@ func ToBatchSubmissionResponse(req BatchSubmission) BatchSubmissionResponse {
 		Code:            req.Code,
 		Remarks:         req.Remarks,
 		Marks:           req.Marks,
+		AutoScore:       req.AutoScore,
+		TestsTotal:      req.TestsTotal,
+		TestsPassed:     req.TestsPassed,
+		Language:        req.Language,
 		Status:          req.Status,
 		SubmittedAt:     req.SubmittedAt.Format(time.RFC3339),
 		StudentID:       req.StudentID.String(),
