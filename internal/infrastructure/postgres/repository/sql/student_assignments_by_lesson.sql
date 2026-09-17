@@ -4,6 +4,7 @@ SELECT
     a.title,
     COALESCE(a.description, ''),
     COALESCE(a.starter_code, ''),
+    COALESCE(a.language, ''),
     a.due_date,
     a.total_marks,
     a.created_at,
@@ -11,6 +12,9 @@ SELECT
     s.code,
     s.remarks,
     s.marks,
+    s.auto_score,
+    s.tests_total,
+    s.tests_passed,
     s.status,
     s.submitted_at
 FROM assignments a

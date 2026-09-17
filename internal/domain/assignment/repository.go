@@ -14,7 +14,12 @@ type Repository interface {
 	HasLessonAccess(ctx context.Context, studentID uuid.UUID, lessonID uuid.UUID) (bool, error)
 	HasAssignmentAccess(ctx context.Context, studentID uuid.UUID, assignmentID uuid.UUID) (bool, error)
 	GetStudentAssignments(ctx context.Context, lessonID uuid.UUID, studentID uuid.UUID) ([]StudentAssignment, error)
-	SubmitAssignment(ctx context.Context, studentID uuid.UUID, assignmentID uuid.UUID, code string) error
+	SubmitAssignment(ctx context.Context, studentID uuid.UUID, assignmentID uuid.UUID, code string) (uuid.UUID, error)
+
+	// Autograde (code assignments).
+	GetGradingData(ctx context.Context, assignmentID uuid.UUID) (language string, totalMarks int, tests []TestCase, err error)
+	SaveAutoGrade(ctx context.Context, submissionID uuid.UUID, autoScore, testsTotal, testsPassed int, results []TestResult) error
+	GetSubmissionResults(ctx context.Context, submissionID uuid.UUID) ([]TestResult, error)
 	GetBatchSubmissions(ctx context.Context, batchID uuid.UUID, q, status string, limit, offset int) ([]BatchSubmission, error)
 	CountBatchSubmissions(ctx context.Context, batchID uuid.UUID, q, status string) (int, error)
 	GetBatchSubmissionSummary(ctx context.Context, batchID uuid.UUID, q string) (SubmissionSummary, error)

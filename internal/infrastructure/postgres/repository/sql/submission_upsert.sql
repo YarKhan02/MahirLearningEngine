@@ -10,4 +10,5 @@ VALUES (
     $1, $2, $3, $4, 'submitted', NOW()
 )
 ON CONFLICT ON CONSTRAINT uq_assignment_submission
-DO UPDATE SET code = EXCLUDED.code, status = 'submitted', submitted_at = NOW();
+DO UPDATE SET code = EXCLUDED.code, status = 'submitted', submitted_at = NOW()
+RETURNING id;

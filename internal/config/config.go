@@ -35,6 +35,10 @@ type Config struct {
 	LiveKitHostURL		string // http(s):// URL for server-side RoomService calls
 	LiveKitAPIKey		string
 	LiveKitAPISecret	string
+	AWSRegion			string
+	AWSAccessKeyID		string
+	AWSSecretAccessKey	string
+	LambdaRunnerFn		string
 }
 
 func Load() (*Config, error) {
@@ -66,6 +70,10 @@ func Load() (*Config, error) {
 		LiveKitHostURL:		getEnv("LIVEKIT_HOST_URL"),
 		LiveKitAPIKey:		getEnv("LIVEKIT_API_KEY"),
 		LiveKitAPISecret:	getEnv("LIVEKIT_API_SECRET"),
+		AWSRegion:			getEnv("AWS_REGION"),
+		AWSAccessKeyID:		getEnv("AWS_ACCESS_KEY_ID"),
+		AWSSecretAccessKey:	getEnv("AWS_SECRET_ACCESS_KEY"),
+		LambdaRunnerFn:		getEnv("LAMBDA_RUNNER_FUNCTION"),
 	}
 
 	limitStr := getEnv("RATE_LIMIT_REQUESTS")

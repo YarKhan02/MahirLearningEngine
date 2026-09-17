@@ -24,6 +24,7 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/token"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/user"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/attachement"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/codeexec"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/liveclass"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/program"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/quiz"
@@ -181,12 +182,20 @@ func run() error {
 	userRepo := repository.NewUserRepository(db)
 	userSvc := user.NewService(userRepo, roleRepo)
 
+	// Code execution runner (AWS Lambda). Unconfigured when AWS env vars are
+	// absent — /code/run returns 503 and autograde is skipped; nothing else breaks.
+	codeRunner, err := codeexec.NewRunner(context.Background(), cfg.AWSRegion, cfg.LambdaRunnerFn, cfg.AWSAccessKeyID, cfg.AWSSecretAccessKey)
+	if err != nil {
+		return fmt.Errorf("failed to init code runner: %w", err)
+	}
+	codeSvc := codeexec.NewService(codeRunner, redisClient)
+
 	assignmentRepo := repository.NewAssignmentRepository(db)
-	assignmentSvc := assignment.NewService(assignmentRepo)
-	
+	assignmentSvc := assignment.NewService(assignmentRepo, codeRunner)
+
 	attendanceRepo := repository.NewAttendanceRepository(db)
 	attendanceSvc := attendance.NewService(attendanceRepo)
-	
+
 	tokenRepo := repository.NewTokenRepository(db)
 	tokenSvc := token.NewService(key, tokenRepo, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 
@@ -197,6 +206,7 @@ func run() error {
 		quiz.NewModule(quizSvc, tokenSvc, redisClient),
 		program.NewModule(programSvc, tokenSvc, redisClient),
 		liveclass.NewModule(liveClassSvc, tokenSvc, redisClient, liveClassHub, liveOriginPatterns),
+		codeexec.NewModule(codeSvc, tokenSvc, redisClient),
 		batch.NewModule(batchSvc, tokenSvc, redisClient),
 		student.NewModule(studentSvc, userSvc, tokenSvc, redisClient, cfg.TempPassword),
 		assignment.NewModule(assignmentSvc, tokenSvc, redisClient),
