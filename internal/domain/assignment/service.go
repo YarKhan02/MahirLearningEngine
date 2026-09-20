@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	ErrStudentNotFound = errors.New("student not found")
-	ErrAccessDenied    = errors.New("you do not have access to this assignment")
+	ErrStudentNotFound    = errors.New("student not found")
+	ErrAccessDenied       = errors.New("you do not have access to this assignment")
+	ErrAssignmentNotFound = errors.New("assignment not found")
 )
 
 // CodeGrader runs a submission's code against test inputs (implemented by codeexec.Runner).
@@ -37,6 +38,14 @@ func (s *Service) CreateAssignment(ctx context.Context, a *Assignment) error {
 
 func (s *Service) GetLessonAssignments(ctx context.Context, lessonID uuid.UUID) ([]Assignment, error) {
 	return s.repo.GetLessonAssignments(ctx, lessonID)
+}
+
+func (s *Service) GetAssignment(ctx context.Context, id uuid.UUID) (*Assignment, error) {
+	return s.repo.GetAssignmentWithTests(ctx, id)
+}
+
+func (s *Service) UpdateAssignment(ctx context.Context, a *Assignment) error {
+	return s.repo.UpdateAssignment(ctx, a)
 }
 
 func (s *Service) DeleteAssignment(ctx context.Context, id uuid.UUID) error {

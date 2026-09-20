@@ -16,6 +16,16 @@ type TestCaseInput struct {
 	Weight			int		`json:"weight"`
 }
 
+type UpdateAssignmentRequest struct {
+	Title		string				`json:"title" binding:"required"`
+	Description	string				`json:"description"`
+	StarterCode	string				`json:"starterCode"`
+	Language	string				`json:"language"`
+	DueDate		string				`json:"dueDate"`
+	TotalMarks	int					`json:"totalMarks"`
+	TestCases	[]TestCaseInput		`json:"testCases"`
+}
+
 type SubmitAssignmentRequest struct {
 	Code string `json:"code" binding:"required"`
 }
@@ -37,6 +47,18 @@ type AssignmentResponse struct {
 	CreatedAt	string	`json:"createdAt"`
 }
 
+type TestCaseResponse struct {
+	Stdin			string	`json:"stdin"`
+	ExpectedStdout	string	`json:"expectedStdout"`
+	Weight			int		`json:"weight"`
+	Ordinal			int		`json:"ordinal"`
+}
+
+type AssignmentWithTestsResponse struct {
+	AssignmentResponse
+	TestCases []TestCaseResponse `json:"testCases"`
+}
+
 type StudentAssignmentResponse struct {
 	AssignmentResponse
 	Submission *SubmissionResponse `json:"submission,omitempty"`
@@ -54,7 +76,6 @@ type SubmissionResponse struct {
 	SubmittedAt	string					`json:"submittedAt"`
 }
 
-// TestResultResponse hides inputs/expected — students see only pass/fail.
 type TestResultResponse struct {
 	Ordinal		int		`json:"ordinal"`
 	Passed		bool	`json:"passed"`

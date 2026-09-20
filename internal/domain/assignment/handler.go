@@ -79,6 +79,59 @@ func (h *Handler) GetLessonAssignments(c *gin.Context) {
 	response.WriteJSON(c, http.StatusOK, resp)
 }
 
+func (h *Handler) GetAssignment(c *gin.Context) {
+
+	assignmentIDU, err := uuid.Parse(c.Param("assignmentId"))
+	if err != nil {
+		response.WriteError(c, http.StatusBadRequest, "invalid assignment id")
+		return
+	}
+
+	a, err := h.svc.GetAssignment(c.Request.Context(), assignmentIDU)
+	if err != nil {
+		if errors.Is(err, ErrAssignmentNotFound) {
+			response.WriteError(c, http.StatusNotFound, "assignment not found")
+			return
+		}
+		response.WriteInternal(c, err)
+		return
+	}
+
+	response.WriteJSON(c, http.StatusOK, ToAssignmentWithTestsResponse(*a))
+}
+
+func (h *Handler) UpdateAssignment(c *gin.Context) {
+
+	assignmentIDU, err := uuid.Parse(c.Param("assignmentId"))
+	if err != nil {
+		response.WriteError(c, http.StatusBadRequest, "invalid assignment id")
+		return
+	}
+
+	var req UpdateAssignmentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.WriteError(c, http.StatusBadRequest, "invalid request payload")
+		return
+	}
+
+	a, err := ToUpdateAssignment(req, assignmentIDU)
+	if err != nil {
+		response.WriteError(c, http.StatusBadRequest, "invalid due date")
+		return
+	}
+
+	if err := h.svc.UpdateAssignment(c.Request.Context(), a); err != nil {
+		if errors.Is(err, ErrAssignmentNotFound) {
+			response.WriteError(c, http.StatusNotFound, "assignment not found")
+			return
+		}
+		response.WriteInternal(c, err)
+		return
+	}
+
+	response.WriteJSON(c, http.StatusOK, "assignment updated")
+}
+
 func (h *Handler) DeleteAssignment(c *gin.Context) {
 
 	assignmentIDU, err := uuid.Parse(c.Param("assignmentId"))

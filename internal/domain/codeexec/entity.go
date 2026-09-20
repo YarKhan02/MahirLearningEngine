@@ -20,7 +20,24 @@ const (
 	// Lambda reserved concurrency is the hard cost/blast-radius ceiling.
 	minRunInterval = 2 * time.Second
 	invokeTimeout  = 15 * time.Second
+	maxPreviewTests    = 50
+	gradePreviewTimeout = 30 * time.Second
 )
+
+type PreviewTest struct {
+	Stdin          string
+	ExpectedStdout string
+}
+
+type PreviewResult struct {
+	Ordinal        int    `json:"ordinal"`
+	Passed         bool   `json:"passed"`
+	TimedOut       bool   `json:"timedOut"`
+	ActualStdout   string `json:"actualStdout"`
+	ExpectedStdout string `json:"expectedStdout"`
+	Stderr         string `json:"stderr"`
+	DurationMs     int    `json:"durationMs"`
+}
 
 // RunResult is what the Lambda returns for one execution.
 type RunResult struct {

@@ -21,5 +21,6 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 	group := r.Group("/code", middleware.Auth(m.tokenSvc, m.redis))
 	{
 		group.POST("/run", m.handler.Run)
+		group.POST("/grade-preview", middleware.RequireRole("admin"), m.handler.GradePreview)
 	}
 }
