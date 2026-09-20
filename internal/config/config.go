@@ -39,6 +39,7 @@ type Config struct {
 	AWSAccessKeyID		string
 	AWSSecretAccessKey	string
 	LambdaRunnerFn		string
+	MaintenanceToken	string
 }
 
 func Load() (*Config, error) {
@@ -74,6 +75,7 @@ func Load() (*Config, error) {
 		AWSAccessKeyID:		getEnv("AWS_ACCESS_KEY_ID"),
 		AWSSecretAccessKey:	getEnv("AWS_SECRET_ACCESS_KEY"),
 		LambdaRunnerFn:		getEnv("LAMBDA_RUNNER_FUNCTION"),
+		MaintenanceToken:	getEnv("MAINTENANCE_TOKEN"),
 	}
 
 	limitStr := getEnv("RATE_LIMIT_REQUESTS")
