@@ -9,6 +9,8 @@ import (
 type Repository interface {
 	CreateAssignment(ctx context.Context, a *Assignment) error
 	GetLessonAssignments(ctx context.Context, lessonID uuid.UUID) ([]Assignment, error)
+	GetAssignmentWithTests(ctx context.Context, id uuid.UUID) (*Assignment, error)
+	UpdateAssignment(ctx context.Context, a *Assignment) error
 	DeleteAssignment(ctx context.Context, id uuid.UUID) error
 	GetStudentIDByUserID(ctx context.Context, userID uuid.UUID) (uuid.UUID, error)
 	HasLessonAccess(ctx context.Context, studentID uuid.UUID, lessonID uuid.UUID) (bool, error)

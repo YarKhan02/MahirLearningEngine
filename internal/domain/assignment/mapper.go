@@ -43,6 +43,56 @@ func ToCreateAssignment(req CreateAssignmentRequest, lessonID uuid.UUID) (*Assig
 	return a, nil
 }
 
+func ToUpdateAssignment(req UpdateAssignmentRequest, assignmentID uuid.UUID) (*Assignment, error) {
+	a := &Assignment{
+		ID:          assignmentID,
+		Title:       req.Title,
+		Description: req.Description,
+		StarterCode: req.StarterCode,
+		Language:    req.Language,
+		TotalMarks:  req.TotalMarks,
+	}
+
+	if req.DueDate != "" {
+		dueDate, err := time.Parse(constant.DateLayout, req.DueDate)
+		if err != nil {
+			return nil, fmt.Errorf("invalid dueDate: %w", err)
+		}
+		a.DueDate = &dueDate
+	}
+
+	for i, tc := range req.TestCases {
+		w := tc.Weight
+		if w <= 0 {
+			w = 1
+		}
+		a.TestCases = append(a.TestCases, TestCase{
+			Stdin:          tc.Stdin,
+			ExpectedStdout: tc.ExpectedStdout,
+			Weight:         w,
+			Ordinal:        i,
+		})
+	}
+
+	return a, nil
+}
+
+func ToAssignmentWithTestsResponse(a Assignment) AssignmentWithTestsResponse {
+	resp := AssignmentWithTestsResponse{
+		AssignmentResponse: ToAssignmentResponse(a),
+		TestCases:          make([]TestCaseResponse, 0, len(a.TestCases)),
+	}
+	for _, tc := range a.TestCases {
+		resp.TestCases = append(resp.TestCases, TestCaseResponse{
+			Stdin:          tc.Stdin,
+			ExpectedStdout: tc.ExpectedStdout,
+			Weight:         tc.Weight,
+			Ordinal:        tc.Ordinal,
+		})
+	}
+	return resp
+}
+
 func ToAssignmentResponse(req Assignment) AssignmentResponse {
 	resp := AssignmentResponse{
 		ID:          req.ID.String(),

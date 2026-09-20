@@ -29,7 +29,9 @@ func (m *Module) RegisterRoutes(r *gin.Engine) {
 		admin.GET("/:lessonId/assignments", m.handler.GetLessonAssignments)
 		admin.GET("/batch/:batchId/submissions", m.handler.GetBatchSubmissions)
 		admin.GET("/batch/:batchId/submissions/summary", m.handler.GetBatchSubmissionSummary)
+		admin.GET("/manage/:assignmentId", m.handler.GetAssignment)
         admin.POST("/:lessonId/assignments", m.handler.CreateAssignment)
+		admin.PATCH("/manage/:assignmentId", m.handler.UpdateAssignment)
 		admin.PATCH("/:submissionId/grade", m.handler.GradeSubmission)
 		admin.DELETE("/:assignmentId", m.handler.DeleteAssignment)
     }

@@ -20,6 +20,15 @@ var assignmentsByLessonSQL string
 //go:embed sql/assignment_delete.sql
 var assignmentDeleteSQL string
 
+//go:embed sql/assignment_get.sql
+var assignmentGetSQL string
+
+//go:embed sql/assignment_update.sql
+var assignmentUpdateSQL string
+
+//go:embed sql/test_cases_delete_by_assignment.sql
+var testCasesDeleteByAssignmentSQL string
+
 //go:embed sql/lesson_access_check.sql
 var lessonAccessCheckSQL string
 
@@ -164,6 +173,91 @@ func (r *AssignmentRepository) GetLessonAssignments(ctx context.Context, lessonI
 	}
 
 	return assignments, nil
+}
+
+func (r *AssignmentRepository) GetAssignmentWithTests(ctx context.Context, id uuid.UUID) (*assignment.Assignment, error) {
+	var a assignment.Assignment
+	err := r.db.QueryRowContext(ctx, assignmentGetSQL, id).Scan(
+		&a.ID,
+		&a.LessonID,
+		&a.Title,
+		&a.Description,
+		&a.StarterCode,
+		&a.Language,
+		&a.DueDate,
+		&a.TotalMarks,
+		&a.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, assignment.ErrAssignmentNotFound
+		}
+		return nil, fmt.Errorf("get assignment: %w", err)
+	}
+
+	rows, err := r.db.QueryContext(ctx, testCasesForGradingSQL, id)
+	if err != nil {
+		return nil, fmt.Errorf("get assignment test cases: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var t assignment.TestCase
+		if err := rows.Scan(&t.ID, &t.Stdin, &t.ExpectedStdout, &t.Weight, &t.Ordinal); err != nil {
+			return nil, fmt.Errorf("scan test case: %w", err)
+		}
+		t.AssignmentID = id
+		a.TestCases = append(a.TestCases, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate test cases: %w", err)
+	}
+	return &a, nil
+}
+
+func (r *AssignmentRepository) UpdateAssignment(ctx context.Context, a *assignment.Assignment) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("update assignment: begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	res, err := tx.ExecContext(
+		ctx,
+		assignmentUpdateSQL,
+		a.ID,
+		a.Title,
+		a.Description,
+		a.StarterCode,
+		a.Language,
+		a.DueDate,
+		a.TotalMarks,
+	)
+	if err != nil {
+		return fmt.Errorf("update assignment: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return assignment.ErrAssignmentNotFound
+	}
+
+	if _, err := tx.ExecContext(ctx, testCasesDeleteByAssignmentSQL, a.ID); err != nil {
+		return fmt.Errorf("update assignment: clear test cases: %w", err)
+	}
+	for _, tc := range a.TestCases {
+		tcID, err := uuid.NewV7()
+		if err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, testCaseCreateSQL,
+			tcID, a.ID, tc.Stdin, tc.ExpectedStdout, tc.Weight, tc.Ordinal,
+		); err != nil {
+			return fmt.Errorf("update assignment: create test case: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("update assignment: commit: %w", err)
+	}
+	return nil
 }
 
 func (r *AssignmentRepository) DeleteAssignment(ctx context.Context, id uuid.UUID) error {
