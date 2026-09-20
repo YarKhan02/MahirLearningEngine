@@ -70,6 +70,7 @@ func (s *Service) StartSession(ctx context.Context, hostID, batchID, courseID uu
 		Title:    title,
 		Status:   StatusLive,
 	}
+	
 	if err := s.repo.CreateSession(ctx, sess); err != nil {
 		return LiveSession{}, err
 	}
@@ -78,12 +79,14 @@ func (s *Service) StartSession(ctx context.Context, hostID, batchID, courseID uu
 	if err != nil {
 		return LiveSession{}, err
 	}
+	
 	logging.FromLogger(ctx).Info("live session started",
 		zap.String("event", "live_session_started"),
 		zap.String("session_id", full.ID.String()),
 		zap.String("batch_id", batchID.String()),
 		zap.String("host_id", hostID.String()),
 	)
+	
 	return full, nil
 }
 
@@ -91,6 +94,7 @@ func (s *Service) EndSession(ctx context.Context, id, hostID uuid.UUID) (LiveSes
 	if err := s.repo.EndSession(ctx, id, hostID); err != nil {
 		return LiveSession{}, err
 	}
+	
 	// Tear down the video room so lingering join tokens can't keep anyone
 	// connected past the class (best-effort; ignore if video is off).
 	if s.livekit != nil {
@@ -102,10 +106,12 @@ func (s *Service) EndSession(ctx context.Context, id, hostID uuid.UUID) (LiveSes
 			)
 		}
 	}
+	
 	logging.FromLogger(ctx).Info("live session ended",
 		zap.String("event", "live_session_ended"),
 		zap.String("session_id", id.String()),
 	)
+	
 	return s.repo.GetSession(ctx, id)
 }
 
@@ -232,10 +238,13 @@ func (s *Service) IssueTicket(ctx context.Context, userID uuid.UUID, role string
 
 // ConsumeTicket validates and immediately invalidates a ticket (single use).
 func (s *Service) ConsumeTicket(ctx context.Context, ticket string) (TicketData, error) {
+	
 	if ticket == "" {
 		return TicketData{}, ErrForbidden
 	}
+	
 	key := ticketKeyPart + ticket
+	
 	// GetDel is atomic: two racing connections can't both consume one ticket.
 	raw, err := s.redis.GetDel(ctx, key)
 	if err != nil || raw == "" {
@@ -246,6 +255,7 @@ func (s *Service) ConsumeTicket(ctx context.Context, ticket string) (TicketData,
 	if err := json.Unmarshal([]byte(raw), &data); err != nil {
 		return TicketData{}, ErrForbidden
 	}
+	
 	return data, nil
 }
 

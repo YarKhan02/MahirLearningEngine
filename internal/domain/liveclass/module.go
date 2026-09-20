@@ -14,9 +14,6 @@ import (
 func OriginPatterns(allowedOrigin string) []string {
 	return []string{
 		stripScheme(allowedOrigin),
-		"www.mahircodelab.com",
-		"localhost:*",
-		"127.0.0.1:*",
 	}
 }
 

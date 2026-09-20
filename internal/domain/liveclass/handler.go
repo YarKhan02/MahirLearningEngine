@@ -26,21 +26,25 @@ func NewHandler(svc *Service, hub *Hub, originPatterns []string) *Handler {
 /* Session lifecycle (admin) */
 
 func (h *Handler) StartSession(c *gin.Context) {
+	
 	hostID, _, ok := middleware.CurrentUserRole(c)
 	if !ok {
 		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
 		return
 	}
+	
 	var req StartSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.WriteError(c, http.StatusBadRequest, "invalid request payload")
 		return
 	}
+	
 	batchID, err := uuid.Parse(req.BatchID)
 	if err != nil {
 		response.WriteError(c, http.StatusBadRequest, "invalid batch id")
 		return
 	}
+	
 	courseID, err := uuid.Parse(req.CourseID)
 	if err != nil {
 		response.WriteError(c, http.StatusBadRequest, "invalid course id")
@@ -56,20 +60,24 @@ func (h *Handler) StartSession(c *gin.Context) {
 		response.WriteInternal(c, err)
 		return
 	}
+	
 	response.WriteJSON(c, http.StatusCreated, toSessionResponse(sess))
 }
 
 func (h *Handler) EndSession(c *gin.Context) {
+	
 	hostID, _, ok := middleware.CurrentUserRole(c)
 	if !ok {
 		response.WriteError(c, http.StatusUnauthorized, "unauthorized")
 		return
 	}
+	
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.WriteError(c, http.StatusBadRequest, "invalid session id")
 		return
 	}
+	
 	sess, err := h.svc.EndSession(c.Request.Context(), id, hostID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
@@ -79,6 +87,7 @@ func (h *Handler) EndSession(c *gin.Context) {
 		response.WriteInternal(c, err)
 		return
 	}
+	
 	response.WriteJSON(c, http.StatusOK, toSessionResponse(sess))
 }
 
@@ -257,7 +266,9 @@ func (h *Handler) ServeWS(c *gin.Context) {
 		response.WriteError(c, http.StatusBadRequest, "invalid session id")
 		return
 	}
+
 	data, err := h.svc.ConsumeTicket(c.Request.Context(), c.Query("ticket"))
+	
 	if err != nil || data.SessionID != id {
 		response.WriteError(c, http.StatusUnauthorized, "invalid or expired ticket")
 		return
@@ -266,9 +277,11 @@ func (h *Handler) ServeWS(c *gin.Context) {
 	conn, err := websocket.Accept(c.Writer, c.Request, &websocket.AcceptOptions{
 		OriginPatterns: h.originPatterns,
 	})
+	
 	if err != nil {
 		return // Accept already wrote the response
 	}
+	
 	// Blocks until the client disconnects. Background ctx so it isn't cancelled
 	// when the gin handler frame returns after the hijack.
 	h.hub.Serve(context.Background(), conn, data.SessionID, data.UserID, data.Name, data.IsHost)
