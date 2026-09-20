@@ -14,7 +14,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// ErrVideoNotConfigured is returned when LiveKit env vars are absent
 var ErrVideoNotConfigured = errors.New("video is not configured")
 
 // LiveKit mints join tokens and manages participant permissions. It talks to

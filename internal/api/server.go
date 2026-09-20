@@ -19,7 +19,7 @@ func NewServer(allowedOrigin string, addr string, modules []Module, logger *zap.
 	r.Use(middleware.Recovery())
 	r.Use(middleware.PrometheusMiddleware())
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{allowedOrigin, "https://www.mahircodelab.com"},
+		AllowOrigins:     []string{allowedOrigin, "https://www.mahirlearning.com"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Authorization", "Content-Type"},
 		AllowCredentials: true,
