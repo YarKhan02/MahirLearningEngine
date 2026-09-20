@@ -26,6 +26,7 @@ import (
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/attachement"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/codeexec"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/liveclass"
+	"github.com/YarKhan02/MahirLearningEngine/internal/domain/maintenance"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/program"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/quiz"
 	"github.com/YarKhan02/MahirLearningEngine/internal/domain/topic"
@@ -199,6 +200,9 @@ func run() error {
 	tokenRepo := repository.NewTokenRepository(db)
 	tokenSvc := token.NewService(key, tokenRepo, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 
+	maintenanceRepo := repository.NewMaintenanceRepository(db)
+	maintenanceSvc := maintenance.NewService(maintenanceRepo, r2Client)
+
 	module := []api.Module{
 		user.NewModule(userSvc, studentSvc, tokenSvc, redisClient, secureCookies),
 		course.NewModule(courseSvc, tokenSvc, redisClient),
@@ -207,6 +211,7 @@ func run() error {
 		program.NewModule(programSvc, tokenSvc, redisClient),
 		liveclass.NewModule(liveClassSvc, tokenSvc, redisClient, liveClassHub, liveOriginPatterns),
 		codeexec.NewModule(codeSvc, tokenSvc, redisClient),
+		maintenance.NewModule(maintenanceSvc, cfg.MaintenanceToken),
 		batch.NewModule(batchSvc, tokenSvc, redisClient),
 		student.NewModule(studentSvc, userSvc, tokenSvc, redisClient, cfg.TempPassword),
 		assignment.NewModule(assignmentSvc, tokenSvc, redisClient),
