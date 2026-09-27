@@ -1,17 +1,30 @@
 package student
 
+import (
+	"errors"
+
+	"github.com/YarKhan02/MahirLearningEngine/internal/helper"
+)
+
+func (r RegisterStudentRequest) Validate() error {
+	if helper.HasNullByte(r.FullName, r.Username, r.Email, r.PhoneNumber, r.DOB, r.Gender, r.BatchID) {
+		return errors.New("invalid characters in input")
+	}
+	return nil
+}
+
 type RegisterStudentRequest struct {
-	FullName	string	`json:"fullName" binding:"required"`
-	Username	string	`json:"username" binding:"required"`
-	Email		string	`json:"email" binding:"required,email"`
-	PhoneNumber	string	`json:"phoneNumber" binding:"required"`
-	DOB			string	`json:"dob" binding:"required"`
-	Gender		string	`json:"gender" binding:"required"`
-	BatchID		string	`json:"batchId" binding:"required"`
+	FullName	string	`json:"fullName" binding:"required" minLength:"1"`
+	Username	string	`json:"username" binding:"required" minLength:"1"`
+	Email		string	`json:"email" binding:"required,email" minLength:"1" format:"email"`
+	PhoneNumber	string	`json:"phoneNumber" binding:"required" minLength:"1"`
+	DOB			string	`json:"dob" binding:"required" format:"date" example:"2001-05-14"`
+	Gender		string	`json:"gender" binding:"required" minLength:"1"`
+	BatchID		string	`json:"batchId" binding:"required" format:"uuid"`
 }
 
 type UpdateStudentStatusRequest struct {
-	Status string `json:"status" binding:"required"`
+	Status string `json:"status" binding:"required" minLength:"1"`
 }
 
 type UpdateStudentBatchRequest struct {

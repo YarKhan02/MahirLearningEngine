@@ -97,6 +97,9 @@ func (r *StudentRepository) RegisterStudent(ctx context.Context, s *student.Stud
 	}
 
 	if _, err := tx.ExecContext(ctx, studentBatchEnrollSQL, enrollID, s.ID, batchID); err != nil {
+		if strings.Contains(err.Error(), "foreign key") {
+			return student.ErrBatchNotFound
+		}
 		return fmt.Errorf("enroll student in batch: %w", err)
 	}
 
@@ -302,6 +305,9 @@ func (r *StudentRepository) SetLessonProgress(ctx context.Context, studentID uui
 	}
 
 	if _, err := r.db.ExecContext(ctx, lessonProgressUpsertSQL, id, studentID, lessonID, completed); err != nil {
+		if strings.Contains(err.Error(), "foreign key") {
+			return student.ErrLessonNotFound
+		}
 		return fmt.Errorf("set lesson progress: %w", err)
 	}
 

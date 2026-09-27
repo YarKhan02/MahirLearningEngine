@@ -1,6 +1,10 @@
 package helper
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/google/uuid"
+)
 
 func ParseUUIDs(ids []string) ([]uuid.UUID, error) {
 	out := make([]uuid.UUID, 0, len(ids))
@@ -12,4 +16,13 @@ func ParseUUIDs(ids []string) ([]uuid.UUID, error) {
 		out = append(out, u)
 	}
 	return out, nil
+}
+
+func HasNullByte(ss ...string) bool {
+	for _, s := range ss {
+		if strings.IndexByte(s, 0) >= 0 {
+			return true
+		}
+	}
+	return false
 }

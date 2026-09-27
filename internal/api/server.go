@@ -14,6 +14,7 @@ import (
 
 func NewServer(allowedOrigin string, addr string, modules []Module, logger *zap.Logger, rateLimitRequests int, rateLimitWindow time.Duration, prometheusUsername string, prometheusPassword string) *http.Server {
 	r := gin.New()
+	r.HandleMethodNotAllowed = true
 	r.Use(middleware.RequestID())
 	r.Use(middleware.RequestLogger(logger))
 	r.Use(middleware.Recovery())

@@ -28,11 +28,28 @@ func NewHandler(studentSvc *Service, userSvc common.StudentAccountRegistrar, tem
 	}
 }
 
+// RegisterStudent godoc
+// @Summary      Self-register a student
+// @Description  Public registration. batchId must be a valid UUID; dob must parse as a date.
+// @Tags         Student
+// @Accept       json
+// @Produce      json
+// @Param        request  body      RegisterStudentRequest  true  "Student registration"
+// @Success      201      {string}  string                  "successfully registered"
+// @Failure      400      {object}  response.ErrorResponse
+// @Failure      409      {object}  response.ErrorResponse
+// @Failure      500      {object}  response.ErrorResponse
+// @Router       /public/students/register [post]
 func (h *Handler) RegisterStudent(c *gin.Context) {
 
 	var req RegisterStudentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.WriteError(c, http.StatusBadRequest, "invalid request payload")
+		return
+	}
+
+	if err := req.Validate(); err != nil {
+		response.WriteError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -54,6 +71,10 @@ func (h *Handler) RegisterStudent(c *gin.Context) {
 			response.WriteError(c, http.StatusConflict, "this username is already taken")
 			return
 		}
+		if errors.Is(err, ErrBatchNotFound) {
+			response.WriteError(c, http.StatusBadRequest, "batch not found")
+			return
+		}
 		response.WriteInternal(c, err)
 		return
 	}
@@ -61,6 +82,19 @@ func (h *Handler) RegisterStudent(c *gin.Context) {
 	response.WriteJSON(c, http.StatusCreated, "successfully registered")
 }
 
+// GetStudents godoc
+// @Summary      List students (admin)
+// @Tags         Student
+// @Produce      json
+// @Security     BearerAuth
+// @Param        q         query     string  false  "Search query"
+// @Param        page      query     int     false  "Page number"
+// @Param        pageSize  query     int     false  "Page size"
+// @Success      200  {object}  pagination.Page[AdminStudentResponse]
+// @Failure      401  {object}  response.ErrorResponse
+// @Failure      403  {object}  response.ErrorResponse
+// @Failure      500  {object}  response.ErrorResponse
+// @Router       /dashboard/admin [get]
 func (h *Handler) GetStudents(c *gin.Context) {
 
 	p := pagination.Parse(c.Query("page"), c.Query("pageSize"), 10, 10)
@@ -79,6 +113,20 @@ func (h *Handler) GetStudents(c *gin.Context) {
 	response.WriteJSON(c, http.StatusOK, pagination.NewPage(items, total, p))
 }
 
+// UpdateStudentStatus godoc
+// @Summary      Update a student's status (admin)
+// @Tags         Student
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        studentId  path      string                       true  "Student ID (UUID)"  format(uuid)
+// @Param        request    body      UpdateStudentStatusRequest   true  "New status"
+// @Success      200  {string}  string  "successfully updated status"
+// @Failure      400  {object}  response.ErrorResponse
+// @Failure      401  {object}  response.ErrorResponse
+// @Failure      403  {object}  response.ErrorResponse
+// @Failure      500  {object}  response.ErrorResponse
+// @Router       /dashboard/admin/{studentId}/status [patch]
 func (h *Handler) UpdateStudentStatus(c *gin.Context) {
 
 	studentIDU, err := uuid.Parse(c.Param("studentId"))
@@ -101,6 +149,21 @@ func (h *Handler) UpdateStudentStatus(c *gin.Context) {
 	response.WriteJSON(c, http.StatusOK, "successfully updated status")
 }
 
+// UpdateStudentBatch godoc
+// @Summary      Move a student to a batch (admin)
+// @Description  Empty batchId removes the student from their current batch.
+// @Tags         Student
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        studentId  path      string                      true  "Student ID (UUID)"  format(uuid)
+// @Param        request    body      UpdateStudentBatchRequest   true  "Target batch"
+// @Success      200  {string}  string  "successfully updated batch"
+// @Failure      400  {object}  response.ErrorResponse
+// @Failure      401  {object}  response.ErrorResponse
+// @Failure      403  {object}  response.ErrorResponse
+// @Failure      500  {object}  response.ErrorResponse
+// @Router       /dashboard/admin/{studentId}/batch [patch]
 func (h *Handler) UpdateStudentBatch(c *gin.Context) {
 
 	studentIDU, err := uuid.Parse(c.Param("studentId"))
@@ -133,6 +196,20 @@ func (h *Handler) UpdateStudentBatch(c *gin.Context) {
 	response.WriteJSON(c, http.StatusOK, "successfully updated batch")
 }
 
+// CreateStudentAccount godoc
+// @Summary      Create a login account for a student (admin)
+// @Tags         Student
+// @Produce      json
+// @Security     BearerAuth
+// @Param        studentId  path      string  true  "Student ID (UUID)"  format(uuid)
+// @Success      201  {object}  StudentAccountResponse
+// @Failure      400  {object}  response.ErrorResponse
+// @Failure      401  {object}  response.ErrorResponse
+// @Failure      403  {object}  response.ErrorResponse
+// @Failure      404  {object}  response.ErrorResponse
+// @Failure      409  {object}  response.ErrorResponse
+// @Failure      500  {object}  response.ErrorResponse
+// @Router       /dashboard/admin/{studentId}/account [post]
 func (h *Handler) CreateStudentAccount(c *gin.Context) {
 
 	studentIDU, err := uuid.Parse(c.Param("studentId"))
@@ -172,11 +249,30 @@ func (h *Handler) CreateStudentAccount(c *gin.Context) {
 	})
 }
 
+// AdminCreateStudent godoc
+// @Summary      Create a student (admin)
+// @Tags         Student
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request  body      RegisterStudentRequest  true  "Student data"
+// @Success      201  {string}  string  "successfully created student"
+// @Failure      400  {object}  response.ErrorResponse
+// @Failure      401  {object}  response.ErrorResponse
+// @Failure      403  {object}  response.ErrorResponse
+// @Failure      409  {object}  response.ErrorResponse
+// @Failure      500  {object}  response.ErrorResponse
+// @Router       /dashboard/admin [post]
 func (h *Handler) AdminCreateStudent(c *gin.Context) {
 
 	var req RegisterStudentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.WriteError(c, http.StatusBadRequest, "invalid request payload")
+		return
+	}
+
+	if err := req.Validate(); err != nil {
+		response.WriteError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -198,6 +294,10 @@ func (h *Handler) AdminCreateStudent(c *gin.Context) {
 			response.WriteError(c, http.StatusConflict, "this username is already taken")
 			return
 		}
+		if errors.Is(err, ErrBatchNotFound) {
+			response.WriteError(c, http.StatusBadRequest, "batch not found")
+			return
+		}
 		response.WriteInternal(c, err)
 		return
 	}
@@ -205,6 +305,15 @@ func (h *Handler) AdminCreateStudent(c *gin.Context) {
 	response.WriteJSON(c, http.StatusCreated, "successfully created student")
 }
 
+// GetMyCourses godoc
+// @Summary      My enrolled courses
+// @Tags         Student
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {array}   StudentCourseResponse
+// @Failure      401  {object}  response.ErrorResponse
+// @Failure      500  {object}  response.ErrorResponse
+// @Router       /dashboard/student [get]
 func (h *Handler) GetMyCourses(c *gin.Context) {
 
 	userID, ok := middleware.CurrentUserID(c)
@@ -227,6 +336,19 @@ func (h *Handler) GetMyCourses(c *gin.Context) {
 	response.WriteJSON(c, http.StatusOK, resp)
 }
 
+// GetMyLessons godoc
+// @Summary      My lessons for a course
+// @Tags         Student
+// @Produce      json
+// @Security     BearerAuth
+// @Param        courseId  path      string  true  "Course ID (UUID)"  format(uuid)
+// @Success      200  {array}   StudentLessonResponse
+// @Failure      400  {object}  response.ErrorResponse
+// @Failure      401  {object}  response.ErrorResponse
+// @Failure      403  {object}  response.ErrorResponse
+// @Failure      404  {object}  response.ErrorResponse
+// @Failure      500  {object}  response.ErrorResponse
+// @Router       /dashboard/student/{courseId}/lessons [get]
 func (h *Handler) GetMyLessons(c *gin.Context) {
 
 	userID, ok := middleware.CurrentUserID(c)
@@ -263,6 +385,20 @@ func (h *Handler) GetMyLessons(c *gin.Context) {
 	response.WriteJSON(c, http.StatusOK, resp)
 }
 
+// SetLessonProgress godoc
+// @Summary      Set lesson completion
+// @Tags         Student
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        lessonId  path      string                     true  "Lesson ID (UUID)"  format(uuid)
+// @Param        request   body      SetLessonProgressRequest   true  "Completion flag"
+// @Success      200  {string}  string  "progress updated"
+// @Failure      400  {object}  response.ErrorResponse
+// @Failure      401  {object}  response.ErrorResponse
+// @Failure      404  {object}  response.ErrorResponse
+// @Failure      500  {object}  response.ErrorResponse
+// @Router       /dashboard/student/{lessonId}/progress [post]
 func (h *Handler) SetLessonProgress(c *gin.Context) {
 
 	userID, ok := middleware.CurrentUserID(c)
@@ -286,6 +422,10 @@ func (h *Handler) SetLessonProgress(c *gin.Context) {
 	if err := h.studentSvc.SetLessonProgress(c.Request.Context(), userID, lessonIDU, *req.Completed); err != nil {
 		if errors.Is(err, ErrStudentNotFound) {
 			response.WriteError(c, http.StatusNotFound, "student profile not found")
+			return
+		}
+		if errors.Is(err, ErrLessonNotFound) {
+			response.WriteError(c, http.StatusNotFound, "lesson not found")
 			return
 		}
 		response.WriteInternal(c, err)
