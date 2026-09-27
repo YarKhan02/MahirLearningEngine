@@ -9,3 +9,12 @@ observability/
 data-alloy/
 
 docs/
+
+.schemathesis/*
+
+# Real credentials — never commit
+loadtest/data/users.json
+
+# k6 report outputs
+*.json.report
+summary.json

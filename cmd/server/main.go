@@ -42,6 +42,16 @@ import (
 	"go.uber.org/zap"
 )
 
+// @title           MahirLearning API
+// @version         1.0
+// @description     Backend API for the MahirLearning platform.
+// @BasePath        /
+//
+// @securityDefinitions.apikey  BearerAuth
+// @in                          header
+// @name                        Authorization
+// @description                 JWT access token as: "Bearer <token>"
+
 // main only reports the error — all setup lives in run so deferred
 // cleanups actually execute on failure (log.Fatalf skips defers).
 func main() {

@@ -13,6 +13,8 @@ var (
 	ErrUsernameAlreadyRegistered = errors.New("this username is already taken")
 	ErrStudentNotFound           = errors.New("student not found")
 	ErrCourseAccessDenied        = errors.New("you do not have access to this course")
+	ErrBatchNotFound             = errors.New("batch not found")
+	ErrLessonNotFound            = errors.New("lesson not found")
 )
 
 type Service struct {

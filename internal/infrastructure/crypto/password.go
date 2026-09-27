@@ -18,7 +18,21 @@ const (
 	parallelism = 2
 	saltLength  = 16
 	keyLength   = 32
+
+	// This gate bounds hashing memory to hashConcurrency x 64 MiB
+	// (~256 MiB) — excess logins queue instead of crashing the process.
+	hashConcurrency = 4
 )
+
+// hashGate is a counting semaphore around Argon2 (see hashConcurrency).
+var hashGate = make(chan struct{}, hashConcurrency)
+
+// boundedIDKey runs argon2.IDKey under the concurrency gate.
+func boundedIDKey(password, salt []byte, t, mem uint32, p uint8, keyLen uint32) []byte {
+	hashGate <- struct{}{}
+	defer func() { <-hashGate }()
+	return argon2.IDKey(password, salt, t, mem, p, keyLen)
+}
 
 func HashPassword(password string) (string, error) {
 	salt := make([]byte, saltLength)
@@ -26,7 +40,7 @@ func HashPassword(password string) (string, error) {
 		return "", err
 	}
 
-	hash := argon2.IDKey([]byte(password), salt, iterations, memory, parallelism, keyLength)
+	hash := boundedIDKey([]byte(password), salt, iterations, memory, parallelism, keyLength)
 
 	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
 		argon2.Version, memory, iterations, parallelism,
@@ -50,7 +64,7 @@ func VerifyPassword(password, encodedHash string) bool {
 	salt, _ := base64.RawStdEncoding.DecodeString(parts[4])
 	decodedHash, _ := base64.RawStdEncoding.DecodeString(parts[5])
 
-	compHash := argon2.IDKey([]byte(password), salt, itr, mem, par, uint32(len(decodedHash)))
+	compHash := boundedIDKey([]byte(password), salt, itr, mem, par, uint32(len(decodedHash)))
 
 	return subtle.ConstantTimeCompare(compHash, decodedHash) == 1
 }

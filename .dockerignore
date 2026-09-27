@@ -11,3 +11,4 @@ observability/
 logs/
 data-alloy/
 docs/
+.schemathesis/
